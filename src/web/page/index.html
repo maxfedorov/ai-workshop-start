@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Skill Atlas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a5b4fc'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='8' fill='url(%23g)'/%3E%3Cellipse cx='16' cy='16' rx='15' ry='5' fill='none' stroke='%2367e8f9' stroke-width='1.6' transform='rotate(-24 16 16)'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body data-state="loading">
+  <div class="sky" aria-hidden="true">
+    <div class="stars stars-small"></div>
+    <div class="stars stars-medium"></div>
+    <div class="stars stars-large"></div>
+    <div class="comet"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Skill Atlas home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs>
+          <linearGradient id="brand-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#a5b4fc"/>
+            <stop offset="1" stop-color="#f0abfc"/>
+          </linearGradient>
+        </defs>
+        <circle cx="16" cy="16" r="7.5" fill="url(#brand-gradient)"/>
+        <ellipse cx="16" cy="16" rx="14.5" ry="5" fill="none" stroke="#67e8f9" stroke-width="1.4" transform="rotate(-24 16 16)"/>
+      </svg>
+      <span>Skill Atlas</span>
+    </a>
+    <form class="scan-form" id="scan-form" role="search">
+      <label class="visually-hidden" for="source">GitHub URL or local directory</label>
+      <svg class="scan-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="source" name="source" type="text" placeholder="https://github.com/owner/repo  or  /path/to/checkout" autocomplete="off" spellcheck="false">
+      <button type="submit" class="button primary">Scan</button>
+    </form>
+    <div class="repo" id="repo"></div>
+  </header>
+
+  <section class="state-panel" id="state-panel" aria-live="polite"></section>
+
+  <main class="layout" id="layout">
+    <aside class="sidebar panel" aria-label="Skills">
+      <div class="filter">
+        <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        <input id="filter" type="search" placeholder="Filter skills" aria-label="Filter skills" autocomplete="off" spellcheck="false">
+        <kbd title="Press / to filter">/</kbd>
+      </div>
+      <p class="count" id="count" aria-live="polite"></p>
+      <nav class="skill-nav">
+        <ul class="skill-list" id="skill-list"></ul>
+      </nav>
+      <details class="warnings" id="warnings" hidden>
+        <summary></summary>
+        <ul></ul>
+      </details>
+      <p class="hints"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>/</kbd> filter · <kbd>Esc</kbd> clear</p>
+    </aside>
+    <section class="detail panel" id="detail" tabindex="-1"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
