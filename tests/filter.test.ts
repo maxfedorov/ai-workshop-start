@@ -34,11 +34,13 @@ test('the filter: every word, in the name, description or path, whatever the cas
   assert.deepEqual(shown(skills, '.github'), ['code-style']);
 });
 
-test('the filter: "a phrase" as a whole; an unclosed quote runs to the end', async (t) => {
+test('the filter: "a phrase" as a whole; an unclosed quote runs to the end; a quote ends a word', async (t) => {
   const skills = await fixtureSkills(t);
   assert.deepEqual(shown(skills, '"commit messages"'), ['commits']);
   assert.deepEqual(shown(skills, '"messages commit"'), []);
   assert.deepEqual(shown(skills, '"lint check'), ['writing-lint-checks']);
+  assert.deepEqual(parseFilter('tag:"code style" foo"bar baz"').map((term: { text: string }) => term.text), ['tag:', 'code style', 'foo', 'bar baz']);
+  assert.deepEqual(shown(skills, 'project\'s"code style"'), ['code-style']);
 });
 
 test('the filter: -word and -"a phrase" hide the skills that have it', async (t) => {

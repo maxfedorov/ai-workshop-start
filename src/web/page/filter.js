@@ -3,8 +3,9 @@
 
 export const FIELDS = ['name', 'description', 'path'];
 
-/** One term: `-`, then a field and `:`, then a "phrase" (an unclosed one runs to the end) or a word. */
-const TERM = /(-?)(?:(name|description|path):)?(?:"([^"]*)"?|(\S*))/gi;
+/** One term: `-`, then a field and `:`, then a "phrase" (an unclosed one runs to the end) or a word,
+ * which a quote ends. */
+const TERM = /(-?)(?:(name|description|path):)?(?:"([^"]*)"?|([^\s"]*))/gi;
 
 /** The filter's terms, lowercased; a lone `-`, `""` or an empty field is no term. */
 export function parseFilter(text) {

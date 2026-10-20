@@ -10,7 +10,8 @@ A local page over the same scan; *nothing is stored*.
 - Keyboard: `/` filters, `↑` `↓` choose, `Esc` clears the filter
 ## Filter
 - **Words**: a skill shows when *every* word is in its name, description or path; case is ignored
-- **"A phrase"** in quotes: matched *as a whole*; an unclosed quote runs to the end
+- **"A phrase"** in quotes: matched *as a whole*; an unclosed quote runs to the end;
+  a quote inside a word ends the word and starts the phrase
 - **-word**, **-"a phrase"**: skills that have it are *hidden*
 - **name:**, **description:**, **path:** before a word or phrase → only that field is searched;
   any other `x:` is a plain word
