@@ -14,12 +14,14 @@ set -euo pipefail
 MP4=${1:?usage: attach-demo.sh <video.mp4> <PR branch name>}
 KEY=$(printf '%s' "${2:?usage: attach-demo.sh <video.mp4> <PR branch name>}" | tr -c 'A-Za-z0-9._-' '-')
 [ -s "$MP4" ] || { echo "no video at $MP4" >&2; exit 1; }
-command -v ffmpeg >/dev/null || { echo 'ffmpeg is missing (demo-feature/setup.sh installs it)' >&2; exit 1; }
+command -v ffmpeg >/dev/null || { echo 'ffmpeg is missing: install it as demo-feature/SKILL.md §1 says' >&2; exit 1; }
 say() { printf '· %s\n' "$*" >&2; }
 
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
 WORK=$(mktemp -d /tmp/skill-atlas-attach-demo.XXXXXX)
-trap 'git worktree remove --force "$WORK/tree" >/dev/null 2>&1 || true; git branch -D demos-new >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT
+# A branch name of this run's own: worktrees of one clone share their branches.
+NEW_BRANCH="demos-new-$$-$(basename "$WORK")"
+trap 'git worktree remove --force "$WORK/tree" >/dev/null 2>&1 || true; git branch -D "$NEW_BRANCH" >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT
 
 # The GIF: small enough to load fast in a PR, at most ~8 MB. Smaller and slower until it fits.
 GIF="$WORK/demo.gif"
@@ -37,7 +39,7 @@ if git fetch -q origin demos 2>/dev/null; then
 else
   say 'creating the demos branch'
   git worktree add -q --detach "$WORK/tree"
-  git -C "$WORK/tree" checkout -q --orphan demos-new
+  git -C "$WORK/tree" checkout -q --orphan "$NEW_BRANCH"
   git -C "$WORK/tree" rm -rq --cached . >/dev/null
   find "$WORK/tree" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
   printf '%s\n' '# Demos' '' \
