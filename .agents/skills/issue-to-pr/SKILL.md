@@ -1,18 +1,18 @@
 ---
 name: issue-to-pr
-description: Implement a GitHub feature-request issue in Skill Atlas. Spec first, then a plan, then tests and code until everything is green; then a pull request that closes the issue, and for an hour after it, fixes for the code review's comments that no other agent has taken. Never merges. Use when a new feature issue arrives or you are asked to implement an issue.
+description: Implement a GitHub feature-request issue in Skill Atlas. Spec first, then a plan, then tests and code until everything is green; then a demo video and a pull request that closes the issue and shows the demo, and for an hour after it, fixes for the code review's comments that no other agent has taken. Never merges. Use when a new feature issue arrives or you are asked to implement an issue.
 ---
 
 # Issue to pull request
 
-One issue → one branch → one pull request → an hour of review fixes. The code is done when
+One issue → one branch → a demo video → one pull request → an hour of review fixes. The code is done when
 [AGENTS.md](../../../AGENTS.md) says so: the spec is updated, every new spec case has an
 integration test, all tests pass locally, and the CI build is green. The run is done when the
-hour of §7 is over. **Never merge or close the PR**, and never delete its branch: a human
+hour of §8 is over. **Never merge or close the PR**, and never delete its branch: a human
 merges.
 
 **Every run that builds the feature ends with an open pull request**: ready for review when it
-is green, a draft when it is not (§6). A pushed branch or local commits without a PR are not an
+is green, a draft when it is not (§7). A pushed branch or local commits without a PR are not an
 ending. The only runs without a PR are the ones §1 stops (*ask* or *skip*); they end with a
 comment on the issue instead.
 
@@ -108,7 +108,42 @@ available, and say in the PR what you checked there. If none is available, say s
 If something is still red after a few honest attempts, don't hide it: open the PR as a
 **draft**, and say what fails and what you tried.
 
-## 6. Pull request, always
+## 6. Demo video
+
+When the feature is done and everything is green, record a demo of it with the
+[demo-feature](../demo-feature/SKILL.md) skill: follow it all the way, from its §0 to its
+§5, with the issue and your spec cases as its input. Show the cases a user would try first, in
+the order the spec lists them.
+
+In its §3, make the MP4 with the slug `issue-<n>` and this output directory:
+
+```sh
+.agents/skills/demo-feature/finish.sh issue-<n> "${AIR_ARTIFACTS_DIR:-/tmp}"
+```
+
+That gives `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4` and, next to it,
+`issue-<n>-demo.gif`, starting where the page is ready. The GIF is what the PR description
+shows. Both are outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step deletes.
+With `AIR_ARTIFACTS_DIR` set, they are also kept as session artifacts. Check that both files
+are there, and look at the frames finish.sh prints, `gif-first.png` included: it is the PR's
+preview, and it must show the feature, not a blank page.
+
+Then put the video where the PR can show it, keyed by your branch name:
+
+```sh
+.agents/skills/issue-to-pr/attach-demo.sh "${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4" issue-<n>-<short-slug> > demo.md
+```
+
+It takes the GIF next to the MP4 (demo-feature's), or makes one from the MP4 when there is
+none. It commits both to the `demos` branch, which holds only videos and shares no history
+with the code, and prints a `## Demo` section for `pr.md` (§7). There, the GIF plays inline in
+the description, and a click opens the MP4. Never commit a video to your PR's branch.
+
+The demo never holds up the PR. If the feature has nothing to show in the web view (a change
+to the command line only), or the recording fails after an honest try (no browser, a blocked
+download), open the PR anyway. Its `## Demo` section then says why there is no video.
+
+## 7. Pull request, always
 
 Create the PR whatever state the work is in. If the tests or CI are still red, open it with
 `--draft` and say what fails. Never end the run without one.
@@ -140,6 +175,8 @@ Closes #<n>.
 ## Tests
 <each spec case → its test>. Checked: typecheck ✔, npm test N/N ✔, smoke ✔
 
+<the contents of demo.md from §6, or "## Demo" and why there is no video>
+
 ## Open questions
 <only if there are any>
 ```
@@ -154,7 +191,7 @@ gh pr view issue-<n>-<short-slug> --json url,isDraft,closingIssuesReferences \
   --jq '"\(.url) draft=\(.isDraft) closes=\([.closingIssuesReferences[].number])"'
 ```
 
-## 7. An hour of review fixes
+## 8. An hour of review fixes
 
 Comment on the issue with the PR link. Then, for **one hour** after the PR is created, check
 the PR **every 5 minutes** for new code-review comments: 12 checks, the first one 5 minutes
@@ -191,6 +228,10 @@ POSTs returned and the shas it pushed, never just the skill name.
 6. Wait for CI on your push. Red CI from your fix belongs to the same finding: fix it in this
    run, under a renewed claim, even though step 4 counts the finding as done for every other
    run.
+
+If a fix changes what the demo shows (a different result on screen, a renamed control), record
+it again (§6) and replace the PR's `## Demo` section with the new output: `gh pr edit <pr>
+--body-file pr.md`. The links of the old demo still work; they are pinned to its commit.
 
 A check that finds nothing open does nothing, not even a comment. A fix that is still running
 when the hour ends is finished and reported; no new finding is claimed after the hour. If you
