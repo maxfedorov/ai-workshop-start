@@ -22,7 +22,9 @@ Read the PR description as a list of claims ("both stay still under reduced moti
 output is unchanged") and check each one. A claim the code does not keep is a finding.
 
 If you already reviewed this PR, read your earlier review first: both the summaries and the
-inline comments, keeping only the ones whose `user.login` is yours:
+inline comments, keeping only the ones whose `user.login` is yours. `gh auth status` shows
+your login, for example `jetbrains-air[bot]`. With a GitHub App token, `gh api user` fails, and
+`gh pr view --json reviews` drops the `[bot]`, so a filter built from either matches nothing:
 
 ```sh
 gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews
