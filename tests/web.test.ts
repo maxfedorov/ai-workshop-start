@@ -111,6 +111,20 @@ test('the page: its own files only, and nothing but its own script may run', asy
   assert.equal((await fetch(`${base}/api/scan`, { method: 'POST' })).status, 405);
 });
 
+test('the long press head: a drawing among the page\'s own files, under the same policy', async (t) => {
+  const base = await server(t, FIXTURE);
+  const response = await fetch(`${base}/pasha.svg`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') ?? '', /^image\/svg\+xml/);
+  assert.match(response.headers.get('content-security-policy') ?? '', /default-src 'none'; script-src 'self'/);
+  const svg = await response.text();
+  assert.match(svg, /^<svg [^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.match(svg, /<title>Pasha Tekhnik<\/title>/);
+  // Nothing from the network: no external image, font or script.
+  assert.doesNotMatch(svg, /https?:\/\/(?!www\.w3\.org\/)|<script|<image/);
+  assert.match(await (await fetch(base)).text(), /<img [^>]*src="\/pasha\.svg"/);
+});
+
 test('Markdown is escaped first: no HTML from a repository reaches the page; links resolve against the link', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'skill-atlas-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

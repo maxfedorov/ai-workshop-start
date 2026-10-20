@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+  <title>Pasha Tekhnik</title>
+  <!-- A drawing, not a photo: the head of the rapper, buzzed hair, a thick beard and a squint. -->
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1c3a0"/>
+      <stop offset="1" stop-color="#d79a74"/>
+    </linearGradient>
+    <linearGradient id="beard" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a3a30"/>
+      <stop offset="1" stop-color="#2a201b"/>
+    </linearGradient>
+    <linearGradient id="chain" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#b7791f"/>
+      <stop offset="0.5" stop-color="#fde68a"/>
+      <stop offset="1" stop-color="#b7791f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Neck, and a gold chain -->
+  <path d="M70 176h60v30q-30 12-60 0Z" fill="#c98d68"/>
+  <path d="M58 206q42 22 84 0" fill="none" stroke="url(#chain)" stroke-width="6" stroke-linecap="round" stroke-dasharray="7 3"/>
+
+  <!-- Ears -->
+  <ellipse cx="38" cy="108" rx="13" ry="19" fill="#dda07a"/>
+  <ellipse cx="162" cy="108" rx="13" ry="19" fill="#dda07a"/>
+  <path d="M36 100q6 8 0 16M164 100q-6 8 0 16" fill="none" stroke="#b97d5b" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- The head: broad, round-jawed -->
+  <path d="M100 22c40 0 66 26 66 68 0 46-22 92-66 92S34 136 34 90c0-42 26-68 66-68Z" fill="url(#skin)"/>
+
+  <!-- Buzzed hair, a shadow of stubble over the scalp -->
+  <path d="M36 84c0-40 26-62 64-62s64 22 64 62c-6-14-12-22-20-28-12 6-30 8-44 8s-32-2-44-8c-8 6-14 14-20 28Z" fill="#2b2622" opacity="0.88"/>
+  <path d="M60 46l3 3M74 38l3 3M90 34l3 3M108 34l3 3M124 38l3 3M138 46l3 3" stroke="#1a1614" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Heavy brows -->
+  <path d="M58 86q16-10 32-2" fill="none" stroke="#231c18" stroke-width="8" stroke-linecap="round"/>
+  <path d="M110 84q16-8 32 2" fill="none" stroke="#231c18" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- A squint: heavy lids over small eyes -->
+  <ellipse cx="74" cy="100" rx="10" ry="5" fill="#fff8f0"/>
+  <ellipse cx="126" cy="100" rx="10" ry="5" fill="#fff8f0"/>
+  <circle cx="76" cy="101" r="4" fill="#3b2a20"/>
+  <circle cx="124" cy="101" r="4" fill="#3b2a20"/>
+  <path d="M62 98q12-7 24 0M114 98q12-7 24 0" fill="none" stroke="#b97d5b" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- A broad nose -->
+  <path d="M100 100v24" stroke="#c48663" stroke-width="3" stroke-linecap="round"/>
+  <path d="M86 128q14 10 28 0" fill="none" stroke="#b97d5b" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="100" cy="126" rx="13" ry="9" fill="#e2a883"/>
+
+  <!-- The beard and the moustache, around a smirk -->
+  <path d="M40 112c4 22 10 40 22 54 10 12 24 18 38 18s28-6 38-18c12-14 18-32 22-54-8 14-16 24-26 26-8-10-20-14-34-14s-26 4-34 14c-10-2-18-12-26-26Z" fill="url(#beard)"/>
+  <path d="M74 142q26-12 52 0q-8 6-26 4q-18 2-26-4Z" fill="#2a201b"/>
+  <path d="M86 152q16 8 30-2" fill="none" stroke="#a65f4b" stroke-width="4" stroke-linecap="round"/>
+</svg>

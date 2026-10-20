@@ -25,6 +25,7 @@ const ASSETS: Record<string, { file: string; type: string }> = {
   '/address.js': { file: 'address.js', type: 'text/javascript; charset=utf-8' },
   '/filter.js': { file: 'filter.js', type: 'text/javascript; charset=utf-8' },
   '/style.css': { file: 'style.css', type: 'text/css; charset=utf-8' },
+  '/pasha.svg': { file: 'pasha.svg', type: 'image/svg+xml; charset=utf-8' },
 };
 
 /** Only the page's own files run; rendered Markdown can show links and text, nothing else. */

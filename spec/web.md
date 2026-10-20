@@ -14,6 +14,7 @@ A local page over the same scan; *nothing is stored*.
   organization, and *Back* returns to it *without scanning it again*
 - The URL holds the source, the skill and the filter: links, reloads and *Back* work
 - Keyboard: `/` filters, `↑` `↓` choose, `Esc` clears the filter
+- A **long press** on *Scan*: see [Long press](#long-press)
 ## Filter
 - **Words**: a skill shows when *every* word is in its name, description or path; case is ignored
 - **"A phrase"** in quotes: matched *as a whole*; an unclosed quote runs to the end;
@@ -26,6 +27,14 @@ A local page over the same scan; *nothing is stored*.
 - The matches are *marked*, only in the fields they were searched in; exclusions are not
 - No skill matches → "No skill matches the filter." and a button that *clears* it
 - In the URL as `?q=…`; typing *replaces* the history entry, it adds none
+## Long press
+- **Held** on *Scan* for *3 s* (mouse, touch or pen) → the head of the rapper **Pasha Tekhnik**
+  appears next to the button
+- It *disappears* on its own *3 s* later
+- A long press *does not scan*; the source stays as typed
+- Released, or moved off the button, before 3 s → no head; a plain click still scans
+- Another long press while the head shows → it stays *3 s* from that one
+- The head is a drawing in the page's own files, `/pasha.svg`: no network, nothing stored
 ## Details
 - `GET /api/scan?source=…`: the scan as JSON; without `source`, the one `serve` was given
 - An organization's JSON: `organization`, its `repositories`, each with `skills`, a number

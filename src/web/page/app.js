@@ -19,6 +19,8 @@ const page = {
   warnings: $('warnings'),
   detail: $('detail'),
   toast: $('toast'),
+  scan: $('scan-form').querySelector('button[type="submit"]'),
+  pasha: $('pasha'),
 };
 
 /** The scan on screen, the skills the filter leaves, the selected one and how its file shows. */
@@ -424,6 +426,31 @@ async function copy(text, message) {
   toastTimer = setTimeout(() => page.toast.classList.remove('shown'), 1600);
 }
 
+// Held on Scan for 3 s, the button shows Pasha Tekhnik for 3 s, and scans nothing.
+const HOLD = 3000;
+const SHOWN = 3000;
+let holdTimer;
+let pashaTimer;
+let held = false;
+
+function hold(event) {
+  if (event.button !== 0) return;
+  held = false;
+  clearTimeout(holdTimer);
+  holdTimer = setTimeout(() => {
+    held = true;
+    page.pasha.hidden = false;
+    clearTimeout(pashaTimer);
+    pashaTimer = setTimeout(() => (page.pasha.hidden = true), SHOWN);
+  }, HOLD);
+}
+
+/** The press is over, wherever it ended; the click that ends a long press, if any, comes first. */
+function release() {
+  clearTimeout(holdTimer);
+  if (held) setTimeout(() => (held = false));
+}
+
 function typing(target) {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
 }
@@ -457,6 +484,16 @@ page.form.addEventListener('submit', (event) => {
   document.body.dataset.view = 'list';
   go({ source });
 });
+
+page.scan.addEventListener('pointerdown', hold);
+page.scan.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+document.addEventListener('pointerup', release);
+document.addEventListener('pointercancel', release);
+// A long press is not a scan, nor, on a touch screen, a context menu.
+page.scan.addEventListener('click', (event) => {
+  if (held) event.preventDefault();
+});
+page.scan.addEventListener('contextmenu', (event) => event.preventDefault());
 
 page.filter.addEventListener('input', () => {
   if (!result) return;
