@@ -111,14 +111,19 @@ If something is still red after a few honest attempts, don't hide it: open the P
 ## 6. Demo video
 
 When the feature is done and everything is green, record a demo of it with the
-[demo-feature](../demo-feature/SKILL.md) skill: follow it from its §0 to its §4, with the issue
-and your spec cases as its input. Show the cases a user would try first, in the order the spec
-lists them. Keep the MP4 it saves (its report gives the path).
+[demo-feature](../demo-feature/SKILL.md) skill: follow it all the way, from its §0 to its
+§5, with the issue and your spec cases as its input. Show the cases a user would try first, in
+the order the spec lists them.
+
+Save the MP4 as `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4`: that is where the PR's video
+comes from, and it is outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step
+deletes. With `AIR_ARTIFACTS_DIR` set, it is also kept as a session artifact. Its §5 report
+gives the path; check that the file is there before going on.
 
 Then put the video where the PR can show it, keyed by your branch name:
 
 ```sh
-.agents/skills/issue-to-pr/attach-demo.sh <the demo's .mp4> issue-<n>-<short-slug> > demo.md
+.agents/skills/issue-to-pr/attach-demo.sh "${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4" issue-<n>-<short-slug> > demo.md
 ```
 
 It commits the MP4 and a GIF preview to the `demos` branch, which holds only videos and shares
