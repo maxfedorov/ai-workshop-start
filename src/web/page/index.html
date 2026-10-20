@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Skill Atlas</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a5b4fc'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='8' fill='url(%23g)'/%3E%3Cellipse cx='16' cy='16' rx='15' ry='5' fill='none' stroke='%2367e8f9' stroke-width='1.6' transform='rotate(-24 16 16)'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='b' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23c7d2fe'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3ClinearGradient id='f' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fde68a'/%3E%3Cstop offset='1' stop-color='%23f97316'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='rotate%2845 16 16%29'%3E%3Cpath d='M13.6 21.4Q16 31 18.4 21.4Q16 23.6 13.6 21.4Z' fill='url%28%23f%29'/%3E%3Cpath d='M11 15.6 7 21.2 7.6 23.2 11.6 20.4ZM21 15.6 25 21.2 24.4 23.2 20.4 20.4Z' fill='%23a855f7'/%3E%3Crect x='13' y='19' width='6' height='2.6' rx='0.8' fill='%23818cf8'/%3E%3Cpath d='M16 2.6C20.6 6.6 21.6 12 21 19.6H11C10.4 12 11.4 6.6 16 2.6Z' fill='url%28%23b%29'/%3E%3Ccircle cx='16' cy='11.6' r='2.6' fill='%230b1030' stroke='%2367e8f9' stroke-width='1.3'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -22,12 +22,21 @@
       <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
         <defs>
           <linearGradient id="brand-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#a5b4fc"/>
+            <stop offset="0" stop-color="#c7d2fe"/>
             <stop offset="1" stop-color="#f0abfc"/>
           </linearGradient>
+          <linearGradient id="flame-gradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fde68a"/>
+            <stop offset="1" stop-color="#f97316"/>
+          </linearGradient>
         </defs>
-        <circle cx="16" cy="16" r="7.5" fill="url(#brand-gradient)"/>
-        <ellipse cx="16" cy="16" rx="14.5" ry="5" fill="none" stroke="#67e8f9" stroke-width="1.4" transform="rotate(-24 16 16)"/>
+        <g transform="rotate(45 16 16)">
+          <path class="brand-flame" d="M13.6 21.4Q16 31 18.4 21.4Q16 23.6 13.6 21.4Z" fill="url(#flame-gradient)"/>
+          <path d="M11 15.6 7 21.2 7.6 23.2 11.6 20.4ZM21 15.6 25 21.2 24.4 23.2 20.4 20.4Z" fill="#a855f7"/>
+          <rect x="13" y="19" width="6" height="2.6" rx="0.8" fill="#818cf8"/>
+          <path d="M16 2.6C20.6 6.6 21.6 12 21 19.6H11C10.4 12 11.4 6.6 16 2.6Z" fill="url(#brand-gradient)"/>
+          <circle cx="16" cy="11.6" r="2.6" fill="#0b1030" stroke="#67e8f9" stroke-width="1.3"/>
+        </g>
       </svg>
       <span>Skill Atlas</span>
     </a>

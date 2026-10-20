@@ -132,7 +132,8 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stars, .comet, .orbit, .orbit .moon, .hero-planet { animation: none !important; }
+  .stars, .comet, .orbit, .orbit .moon, .hero-planet, .brand-flame { animation: none !important; }
+  .brand-mark { transition: none !important; }
   .comet { display: none; }
 }
 
@@ -166,7 +167,11 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
   background-clip: text;
   color: transparent;
 }
-.brand-mark { width: 30px; height: 30px; filter: drop-shadow(0 0 8px rgba(165, 180, 252, 0.6)); }
+.brand-mark { width: 30px; height: 30px; filter: drop-shadow(0 0 8px rgba(165, 180, 252, 0.6)); transition: transform 0.3s ease-out; }
+.brand:hover .brand-mark { transform: translate(2px, -2px); }
+/* The flame flickers from the nozzle, along the rocket's own axis. */
+.brand-flame { transform-box: fill-box; transform-origin: 50% 0; animation: flicker 0.9s ease-in-out infinite alternate; }
+@keyframes flicker { from { transform: scaleY(0.8); opacity: 0.85; } to { transform: scaleY(1.1); opacity: 1; } }
 
 .scan-form {
   position: relative;
