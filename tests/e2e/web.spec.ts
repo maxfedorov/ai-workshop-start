@@ -11,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test('the fixture scan lists every skill, sorted, with the malformed one and the copy marked', async ({ page }) => {
   await expect(page.locator('#layout')).toHaveScreenshot('skill-list.png');
+  await expect(page.locator('body')).toHaveScreenshot('demo-ci-failure.png');
 });
 
 test('filtering to one word narrows the list to the matching skill', async ({ page }) => {
