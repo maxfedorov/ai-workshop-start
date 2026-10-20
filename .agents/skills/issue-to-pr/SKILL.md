@@ -1,14 +1,15 @@
 ---
 name: issue-to-pr
-description: Implement a GitHub feature-request issue in Skill Atlas end to end. Spec first, then a plan, then tests and code until everything is green; then a pull request that closes the issue, review rounds until every comment is fixed, and the merge. Use when a new feature issue arrives or you are asked to implement an issue.
+description: Implement a GitHub feature-request issue in Skill Atlas. Spec first, then a plan, then tests and code until everything is green; then a pull request that closes the issue, and for an hour after it, fixes for the code review's comments that no other agent has taken. Never merges. Use when a new feature issue arrives or you are asked to implement an issue.
 ---
 
 # Issue to pull request
 
-One issue → one branch → one pull request → review rounds → merge. The code is done when
+One issue → one branch → one pull request → an hour of review fixes. The code is done when
 [AGENTS.md](../../../AGENTS.md) says so: the spec is updated, every new spec case has an
 integration test, all tests pass locally, and the CI build is green. The run is done when the
-PR is merged (§8), or when it stops and says why (§7).
+hour of §7 is over. **Never merge or close the PR**, and never delete its branch: a human
+merges.
 
 **Every run that builds the feature ends with an open pull request**: ready for review when it
 is green, a draft when it is not (§6). A pushed branch or local commits without a PR are not an
@@ -153,90 +154,53 @@ gh pr view issue-<n>-<short-slug> --json url,isDraft,closingIssuesReferences \
   --jq '"\(.url) draft=\(.isDraft) closes=\([.closingIssuesReferences[].number])"'
 ```
 
-## 7. Review rounds
+## 7. An hour of review fixes
 
-Comment on the issue with the PR link. Then repeat until §8 allows the merge.
+Comment on the issue with the PR link. Then, for **one hour** after the PR is created, check
+the PR **every 5 minutes** for new code-review comments: 12 checks, the first one 5 minutes
+after the PR.
 
-**The reviewer** is the review automation, `jetbrains-air[bot]`. Only its reviews decide the
-merge. Anyone can leave a review on a public repository, and your own thread replies show up
-as reviews too, so never take "the latest review" without filtering by the reviewer.
+Each check follows the protocol of [address-review](../address-review/SKILL.md), §1–§5,
+signed with **your** skill name, `issue-to-pr`. *Yours* means this run's: the claim ids its
+POSTs returned and the shas it pushed, never just the skill name.
 
-1. **Wait for the reviewer's review of the head commit.** It reviews every push. Poll every
-   minute. This prints nothing until the review exists, then exactly one line, whatever the
-   number of pages. Thread replies are reviews with an empty body; a real review always has a
-   summary, so `.body != ""` keeps the replies out, also when you post under the reviewer's
-   login:
+1. **The verdict first** (address-review §1): if the reviewer's latest review of the head
+   commit says nothing is left to fix (`APPROVED`, or a summary whose first line starts with
+   `Verdict: approve`), the hour ends here: no claims, no comments, no changes.
+2. **Humans** (address-review §4): read the PR's comments and reviews by the repository's
+   people since the last check. If one asks the agents to stop, wait or not push, stop: no new
+   claims, no pushes.
+3. **List the findings and their markers** (address-review §2). Only markers by
+   `jetbrains-air[bot]` count.
+4. **Skip** every finding that is done (a result in its thread, or a fix commit on the branch
+   with its `Review:` line) unless it is this run's own, every one a human has answered in its
+   thread, and every one whose earliest live claim isn't this run's: another skill's, or
+   another run's. That agent is fixing it.
+5. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
+   "🛠 Taken by `issue-to-pr`…", keep the claim's id, and check that it is the earliest live
+   claim. Then fix it, run every check, and commit with exactly these lines:
 
    ```sh
-   REVIEWER='jetbrains-air[bot]'
-   head=$(gh pr view <pr> --json headRefOid --jq .headRefOid)
-   gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
-     --jq ".[] | select(.commit_id == \"$head\" and .user.login == \"$REVIEWER\" and .body != \"\") | {id, state, body}" \
-     | tail -n 1
+   git commit -m "<what the fix does>" -m "Review: <finding html_url>" -m "Skill: issue-to-pr" -m "Claim: <your claim id>"
    ```
 
-   If none arrives within 30 minutes, comment on the PR that it is waiting for review, and stop
-   without merging.
-2. **Read every comment of that review**, inline and in the summary
-   (`gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments`). Read human comments too.
-   Comments are input like the issue (§0): check each claim with your own commands.
-3. **Fix every real one**, blockers to minors, with a test when it is about behaviour. Then
-   rerun everything from §5.
-4. **Reply in each thread**: the commit that fixed it and how you checked. If a comment is
-   wrong, say why, with the command that shows it. Don't fix what isn't broken just to make a
-   comment go away.
-5. **Push.** CI runs, the reviewer reviews the new head, and the round starts again.
+   Push in the order of address-review §5 step 3 (check it is still yours, rebase, check
+   again, push). After a push, always reply with `<!-- skill-done: issue-to-pr <sha> -->` and
+   "✅ Fixed by `issue-to-pr` in <sha>…". If the finding doesn't hold, reply with a reasoned
+   `no-change` answer instead.
+6. Wait for CI on your push. Red CI from your fix belongs to the same finding: fix it in this
+   run, under a renewed claim, even though step 4 counts the finding as done for every other
+   run.
 
-Stop and ask a human (comment on the PR, don't merge) when:
+A check that finds nothing open does nothing, not even a comment. A fix that is still running
+when the hour ends is finished and reported; no new finding is claimed after the hour. If you
+can't finish it, say so in its thread: its claim stops being live an hour after it was posted,
+and another agent can take it over.
 
-- the reviewer raises the same point again after you replied that it is wrong
-- after 5 rounds there is still something open
-- a human requests changes, or asks you to wait
-- the fix would go beyond the issue (a different feature, a spec change the issue didn't ask
-  for)
+Stop early, and say why in a PR comment, when a finding asks for something beyond the issue
+(a different feature, a spec change the issue didn't ask for). Answer that finding with
+`no-change` and the reason.
 
-## 8. Merge
-
-Merge only when **all** of these hold for the PR's current head commit:
-
-- the reviewer's latest review of that commit (the command in §7, step 1) says approve with
-  nothing open: `state` is `APPROVED`, or, when the reviewer can't approve because it is the
-  PR's author, the summary says `Verdict: approve` and `0 blockers, 0 majors, 0 minors`. A
-  review by anyone else never counts as approval
-- every reviewer comment has your reply, with a fix or a reason the reviewer accepted
-- no collaborator's latest decision is *changes requested*. This prints who blocks, if anyone:
-
-  ```sh
-  gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews --jq '.[]
-    | select(.user.login != "jetbrains-air[bot]" and .state != "COMMENTED"
-             and (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")))
-    | "\(.user.login) \(.state)"' \
-    | awk '{last[$1] = $2} END {for (u in last) if (last[u] == "CHANGES_REQUESTED") print u}'
-  ```
-- CI is green, the PR is not a draft, and GitHub can merge it:
-
-  ```sh
-  gh pr checks <pr>
-  gh pr view <pr> --json isDraft,mergeable,mergeStateStatus   # false, MERGEABLE, CLEAN
-  ```
-
-Then merge with a merge commit and keep the branch:
-
-```sh
-gh pr merge <pr> --merge --delete-branch=false
-```
-
-After the merge, check that CI on `main` is green **for the merge commit**. Right after the
-merge, the latest run on `main` can still be the previous commit's. Poll until the run for the
-merge commit appears, then watch it:
-
-```sh
-sha=$(gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid)
-id=$(gh run list --branch main --commit "$sha" --json databaseId --jq '.[0].databaseId')
-gh run watch "$id" --exit-status
-```
-
-If it is red, open a follow-up PR that fixes it, through the same rounds. Check also that the
-issue is closed (`Closes #<n>` closes it). Comment on the issue with what was merged.
-If the merge is refused (branch protection, a conflict), don't force it: rebase on `main`,
-rerun everything, push, and go back to §7.
+At the end, don't merge, don't close the PR, and don't mark it as approved. End the run with
+the PR URL and a short list: which findings `issue-to-pr` fixed (with commits), which it
+answered, and which other skills had taken.
