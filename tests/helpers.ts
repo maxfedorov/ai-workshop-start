@@ -33,7 +33,7 @@ const COMMITS = '---\nname: commits\ndescription: Write commit messages the way 
 
 /**
  * What GitHub answers for the organization JetBrains: example (the repository above, 1 skill),
- * twins (2 skills: one of them in two folders, one with malformed front matter, and a shipped
+ * twins (archived, 2 skills: one of them in two folders, one with malformed front matter, and a shipped
  * SKILL.md that is not counted), docs-only (a SKILL.md outside SKILL_ROOTS) and empty; and
  * upstream-fork, a fork, which is left out.
  */
@@ -48,7 +48,7 @@ const ORGANIZATION: Recording = {
       { full_name: 'JetBrains/docs-only', default_branch: 'main', fork: false },
       { full_name: 'JetBrains/empty', default_branch: 'main', fork: false },
       { full_name: 'JetBrains/example', default_branch: 'main', fork: false },
-      { full_name: 'JetBrains/twins', default_branch: 'master', fork: false },
+      { full_name: 'JetBrains/twins', default_branch: 'master', fork: false, archived: true },
       { full_name: 'JetBrains/upstream-fork', default_branch: 'main', fork: true },
     ],
   },

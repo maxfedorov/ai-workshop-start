@@ -107,6 +107,7 @@ async function pages<T>(github: Client, url: string): Promise<T[]> {
 /** The files named SKILL.md in the owner's repositories, by repository. Code search leaves forks out. */
 async function searchOwnerPaths(github: Client, qualifier: string, warnings: string[]): Promise<Map<string, string[]>> {
   const found = new Map<string, Set<string>>(); // pages can repeat a result
+  let total = 0;
   // GitHub returns at most 1000 results: ten pages.
   for (let page = 1; page <= 10; page++) {
     const result = await github.json<{ total_count: number; items: { path: string; repository: { full_name: string } }[] }>(
@@ -116,11 +117,11 @@ async function searchOwnerPaths(github: Client, qualifier: string, warnings: str
       const id = item.repository.full_name;
       found.set(id, (found.get(id) ?? new Set()).add(item.path));
     }
-    if (page === 10 && result.total_count > 1000) {
-      warnings.push(`code search found ${result.total_count} SKILL.md files and returns only the first 1000; some skills may be missing`);
-    }
-    if (result.items.length < 100 || page * 100 >= result.total_count) break;
+    total = result.total_count;
+    if (result.items.length < 100 || page * 100 >= total) break;
   }
+  // Also when a page came back short first: the search said there are more than it can return.
+  if (total > 1000) warnings.push(`code search found ${total} SKILL.md files and returns only the first 1000; some skills may be missing`);
   return new Map([...found].map(([id, paths]) => [id, [...paths]]));
 }
 

@@ -56,8 +56,8 @@ test('scan <organization>: how many repositories, how many with skills, then eac
   );
 });
 
-test('organization: forks are left out; copies count once, shipped skills not, a SKILL.md outside SKILL_ROOTS makes no skill', () => {
-  // twins has commits in two folders, broken, and a shipped bundled skill: 2 skills. docs-only has none.
+test('organization: forks are left out, archived ones not; copies count once, shipped skills not, a SKILL.md outside SKILL_ROOTS makes no skill', () => {
+  // twins, archived, has commits in two folders, broken, and a shipped bundled skill: 2 skills. docs-only has none.
   assert.match(organization.stdout, /^JetBrains\/twins · 2 skills$/m);
   assert.doesNotMatch(organization.stdout, /docs-only|empty|upstream-fork/);
   assert.match(organization.stdout, /^JetBrains · 4 repositories,/);
@@ -126,6 +126,15 @@ test('repositories: every page of them; more than 1000 SKILL.md → a warning, t
   assert.equal(big.code, 0, big.stderr);
   assert.equal(big.stdout, 'Big · 101 repositories, 0 with skills');
   assert.equal(big.stderr, 'warning: code search found 1500 SKILL.md files and returns only the first 1000; some skills may be missing');
+
+  // Code search can come back short before page 10, and still say there are more.
+  recording['https://api.github.com/search/code?q=filename:SKILL.md+org:Big&per_page=100&page=1'] = {
+    status: 200,
+    body: { total_count: 1500, incomplete_results: true, items: [{ path: 'docs/x/SKILL.md', repository: { full_name: 'Big/repo-0' } }] },
+  };
+  const short = await atlasOver(recording, ['scan', 'https://github.com/Big']);
+  assert.equal(short.code, 0, short.stderr);
+  assert.equal(short.stderr, 'warning: code search found 1500 SKILL.md files and returns only the first 1000; some skills may be missing');
 });
 
 test('web: an organization as JSON, each repository with its number of skills, the ones with skills first', async (t) => {
