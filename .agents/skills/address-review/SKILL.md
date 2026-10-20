@@ -49,7 +49,19 @@ gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
        (.body | capture(\"^<!-- skill-(?<kind>claim|done): (?<skill>[a-z0-9-]+)\") | .kind + \" \" + .skill)"
 ```
 
-From those markers, a finding is:
+**A human's word in the thread comes first.** Read the replies by the repository's people too:
+
+```sh
+gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
+  --jq '.[] | select(.in_reply_to_id == <id> and (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")))
+        | "\(.created_at) \(.user.login): \(.body)"'
+```
+
+If one of them answered the finding ("by design", "won't fix", "I'll do it", "Fixed in …"),
+the finding is **the human's**: skip it. Take it only when their latest reply asks the agents
+to fix it. If you can't tell, ask in the thread instead of claiming it.
+
+Otherwise, from the markers, a finding is:
 
 - **done** if it has a result. If the reviewer still disagrees, it raises a new finding.
 - **taken** if its earliest *live* claim is another skill's. Leave it alone: that agent is
@@ -129,6 +141,12 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
    ```
 
    If the rebase brings someone else's commits, run the checks again before pushing.
+
+   **Just before `git push`, and again before the result, read the markers once more.** If
+   your claim is no longer the earliest live one (it ran out and another agent took over),
+   don't push and don't report. Drop your change (`git reset --hard origin/<headRefName>`),
+   and say in the thread: "Gave this up to `<skill>`, which took over."
+
 4. **Report** in the same thread, within the hour of your claim:
 
    ```markdown

@@ -168,11 +168,12 @@ signed with **your** skill name, `issue-to-pr`:
    push, stop: no new claims, no pushes.
 2. **List the findings and their markers** (address-review §1). Only markers by
    `jetbrains-air[bot]` count.
-3. **Skip** every finding that is done, and every one whose earliest live claim belongs to
-   another skill, `address-review` included. That agent is fixing it.
+3. **Skip** every finding that is done, every one a human has answered in its thread, and
+   every one whose earliest live claim belongs to another skill, `address-review` included.
+   That agent is fixing it.
 4. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
    "🛠 Taken by `issue-to-pr`…", and check that your claim is the earliest live one. Then fix
-   it, run every check, commit, push, and reply with `<!-- skill-done: issue-to-pr <sha> -->`
+   it, run every check, commit, check your claim is still the earliest live one, push, and reply with `<!-- skill-done: issue-to-pr <sha> -->`
    and "✅ Fixed by `issue-to-pr` in <sha>…", or with a reasoned `no-change` answer.
 5. Wait for CI on your push. Red CI from your fix belongs to the same finding.
 
