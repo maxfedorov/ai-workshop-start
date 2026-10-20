@@ -445,11 +445,6 @@ function hold(event) {
   }, HOLD);
 }
 
-/** The press is over, wherever it ended; the click that ends a long press, if any, comes first. */
-function release() {
-  clearTimeout(holdTimer);
-  if (held) setTimeout(() => (held = false));
-}
 
 function typing(target) {
   return target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
@@ -486,12 +481,16 @@ page.form.addEventListener('submit', (event) => {
 });
 
 page.scan.addEventListener('pointerdown', hold);
+// The press is over, wherever it ended.
 page.scan.addEventListener('pointerleave', () => clearTimeout(holdTimer));
-document.addEventListener('pointerup', release);
-document.addEventListener('pointercancel', release);
-// A long press is not a scan, nor, on a touch screen, a context menu.
+document.addEventListener('pointerup', () => clearTimeout(holdTimer));
+document.addEventListener('pointercancel', () => clearTimeout(holdTimer));
+// A long press is not a scan, nor, on a touch screen, a context menu. Its click comes when it
+// comes (a task later on touch), so it, not a timer, consumes the press; a keyboard's click
+// (detail 0) after a press that ended off the button still scans.
 page.scan.addEventListener('click', (event) => {
-  if (held) event.preventDefault();
+  if (held && event.detail) event.preventDefault();
+  held = false;
 });
 page.scan.addEventListener('contextmenu', (event) => event.preventDefault());
 

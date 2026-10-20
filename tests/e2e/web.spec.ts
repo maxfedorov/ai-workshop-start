@@ -93,6 +93,17 @@ test.describe('a long press on Scan', () => {
     await expect(page.locator('#pasha')).toBeHidden();
   });
 
+  test('a long press released off the button leaves the next scan alone: Enter still scans', async ({ page }) => {
+    await page.mouse.down();
+    await page.clock.runFor(3_000);
+    await page.mouse.move(10, 300);
+    await page.mouse.up();
+    await expect(page.locator('#pasha')).toBeVisible();
+    const scanned = page.waitForRequest(/\/api\/scan\?source=/);
+    await page.locator('#source').press('Enter');
+    await scanned;
+  });
+
   test('another long press while the head shows keeps it 3 s from that one', async ({ page }) => {
     const head = page.locator('#pasha');
     await page.mouse.down();
@@ -106,5 +117,29 @@ test.describe('a long press on Scan', () => {
     await expect(head).toBeVisible();
     await page.clock.runFor(100);
     await expect(head).toBeHidden();
+  });
+});
+
+// On a touch screen, the click that ends a long press comes a task later than with a mouse; on
+// the real clock, since the race is between that click and the page's own timers.
+test.describe('a long press on Scan, by touch', () => {
+  test.use({ hasTouch: true });
+
+  test('shows the head and scans nothing', async ({ page }) => {
+    const scans: string[] = [];
+    page.on('request', (request) => { if (request.url().includes('/api/scan')) scans.push(request.url()); });
+    const box = (await page.getByRole('button', { name: 'Scan' }).boundingBox())!;
+    const touch = await page.context().newCDPSession(page);
+    for (let press = 0; press < 2; press++) {
+      await page.locator('#source').fill('typed, not scanned');
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+      await page.waitForTimeout(3_200);
+      await expect(page.locator('#pasha')).toBeVisible();
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(600);
+      await expect(page.locator('#source')).toHaveValue('typed, not scanned');
+      expect(scans).toEqual([]);
+      await expect(page.locator('#pasha')).toBeHidden({ timeout: 5_000 });
+    }
   });
 });
