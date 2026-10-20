@@ -6,7 +6,8 @@ description: Review a pull request, a branch or uncommitted changes in Skill Atl
 # Code review
 
 A review is **short**: a few lines of summary, then inline comments. Each comment points at
-one line and says how to see the problem. If you cannot reproduce something, leave it out.
+one line and says how to see the problem. Report only what you reproduced, or are sure of from
+the code, and say which in `Verified`. Leave out anything you only suspect.
 
 ## 1. Get the change
 
@@ -17,6 +18,24 @@ one line and says how to see the problem. If you cannot reproduce something, lea
 Read [AGENTS.md](../../../AGENTS.md) and the parts of [spec/](../../../spec/) that the change
 touches. Then read the changed files around the diff, not just the diff itself.
 
+Read the PR description as a list of claims ("both stay still under reduced motion", "the CLI
+output is unchanged") and check each one. A claim the code does not keep is a finding.
+
+If you already reviewed this PR, read your earlier review first: both the summaries and the
+inline comments, keeping only the ones whose `user.login` is yours. `gh auth status` shows
+your login, for example `jetbrains-air[bot]`. With a GitHub App token, `gh api user` fails, and
+`gh pr view --json reviews` drops the `[bot]`, so a filter built from either matches nothing:
+
+```sh
+gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews
+gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments
+```
+
+After a push, an old comment's `line` is `null`; it was on `original_line`. The author's
+replies (`in_reply_to_id`) hint at what is fixed, but check each fix yourself. Do not post an
+old comment again. Say in the summary which ones are fixed, and comment only on what is new
+or still broken.
+
 ## 2. Run it
 
 In a fresh checkout of the change:
@@ -26,9 +45,20 @@ npm ci && npm run typecheck && npm test
 ./skill-atlas help && ./skill-atlas scan ./fixture
 ```
 
-For a web view change, also start `./skill-atlas serve ./fixture --port 0` and check it with
-`curl` against `/api/scan`. Write down which commands passed and which failed: they go in the
-summary.
+Then run what the change touches:
+
+- **Core or CLI**: the command on the input the change is about, compared with `main`
+- **Server** (`src/web/*.ts`): `./skill-atlas serve ./fixture --port 0`, then `curl` the
+  routes and check the status, the headers and the JSON
+- **Page** (`src/web/page/`): `curl` proves nothing here. If a headless browser is available,
+  load the page and assert on what a user gets: computed styles, the DOM, console errors.
+  Emulate what the change depends on, such as `page.emulateMedia({ reducedMotion: 'reduce' })`
+  or a 390 px viewport. The Air cloud environment has none for now: its network policy blocks
+  `cdn.playwright.dev`, and the repository does not install a browser. Then don't spend time
+  trying. Give exact manual steps, mark the comment *manual*, keep only what you are sure of
+  from the code, and say `page: manual, no browser` in `Checked`
+
+Write down which checks passed and which failed: they go in the summary.
 
 ## 3. Look for, in this order
 
@@ -37,7 +67,14 @@ summary.
    every case in the spec has an integration test
 3. **Security**: HTML or script from a scanned repository reaching the page, unsafe links,
    files served from outside `src/web/page`, `GITHUB_TOKEN` in output or logs
-4. **Fit**: does it match the surrounding code (thin clients over the core, nothing stored,
+4. **Page specifics**:
+   - the cascade: a rule inside `@media` adds no specificity, so a later rule with the same
+     selector beats it
+   - `prefers-reduced-motion` stops every new animation and transition
+   - the CSP stays as it is: no inline `style=` or `<script>`, no external fonts or images
+   - narrow screens still work
+   - decorative SVGs are `aria-hidden`
+5. **Fit**: does it match the surrounding code (thin clients over the core, nothing stored,
    names and comments in the same style)? Comment only where it costs something
 
 Skip nits the codebase does not care about. Do not comment on taste, and do not repeat
@@ -45,13 +82,18 @@ something the CI already reports.
 
 ## 4. Write it
 
-**Summary**, at most 5 lines:
+**Summary**, at most 6 lines:
 
 ```
 Verdict: request changes | comment | approve
-Checked: npm test 17/17 ✔, typecheck ✔, smoke ✔, CI ✔
+Checked: npm test 17/17 ✔, typecheck ✔, smoke ✔, CI ✔, page in headless Chromium ✔
 2 blockers, 1 minor; the main one: <one line>
+Spec: <updated | not needed, because …>; tests: <cover the change | missing for …>
+Earlier comments: <2 fixed, 1 still open>   (only on a repeat review)
 ```
+
+Verdict: any blocker or major → *request changes*; only minors → *comment*; nothing → *approve*.
+Post it as that review `event` (see §5), so that *request changes* really blocks the merge.
 
 **Inline comments**: one per problem, on the changed line (the new side of the diff):
 
@@ -59,11 +101,13 @@ Checked: npm test 17/17 ✔, typecheck ✔, smoke ✔, CI ✔
 **[blocker|major|minor]** <the problem, in one sentence>
 Where: `src/core/scan.ts:42`, in `readSkill`
 Reproduce: `./skill-atlas scan ./fixture` → prints `commits` twice; expected once with `also in …`
-Fix: <one sentence, optional>
+Verified: ran it | headless Chromium | manual | by reading the code
+Fix: <one sentence that fits the surrounding code, optional>
 ```
 
-`Reproduce` is an exact command, input, URL or test, then what happens and what should happen.
-The best reproduction is a failing test the author can paste into `tests/`.
+`Reproduce` is an exact command, input, URL or script, then what happens and what should
+happen. The best reproduction is one the author can run as is: a failing test they can paste
+into `tests/`, or a few lines of browser script for the page.
 
 ## 5. Post it (only when asked)
 
@@ -75,7 +119,7 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews -X POST --input review.json
 
 ```json
 {
-  "event": "COMMENT",
+  "event": "<REQUEST_CHANGES | COMMENT | APPROVE, from the verdict>",
   "body": "<summary>",
   "comments": [{ "path": "src/core/scan.ts", "line": 42, "side": "RIGHT", "body": "<comment>" }]
 }
