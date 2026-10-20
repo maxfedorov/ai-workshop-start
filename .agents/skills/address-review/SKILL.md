@@ -68,14 +68,12 @@ Otherwise, from the markers, a finding is:
   posted. If the reviewer still disagrees, it raises a new finding.
 
   ```sh
-  # The fix commits for this finding: the Review trailer must equal the URL exactly
-  # (a plain --grep also matches a longer discussion id that starts with this one)
-  git fetch origin && git log --format='%h %(trailers:key=Review,valueonly,separator=%x2C)' origin/<headRefName> \
-    | awk -v url='<finding URL>' '$2 == url {print $1}'
+  # The fix commits for this finding: a line that is exactly "Review: <URL>", anywhere in the
+  # message. Anchored, so a longer discussion id doesn't match; dots escaped, so they are dots.
+  url='<finding URL>'
+  git fetch origin && git log --format='%h %s' origin/<headRefName> \
+    --grep="^Review: $(printf '%s' "$url" | sed 's/[][\.*^$]/\\&/g')\$"
   ```
-
-  Keep `Review: <finding URL>` as the last paragraph of every fix commit's message, so that git
-  reads it as a trailer.
 - **taken** if its earliest *live* claim is another skill's. Leave it alone: that agent is
   working on it.
 - **yours** if its earliest live claim is yours.
