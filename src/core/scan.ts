@@ -20,17 +20,21 @@ export async function scan(source: Source): Promise<ScanResult> {
   const files = findSkills(source.paths, source.repository.name);
   // The files are read at the same time: on GitHub, each one is a request.
   const results = await Promise.all(files.map((file) => readSkill(source, file)));
+  const entries = results.flatMap((result) => (result.entry ? [result.entry] : []));
   return {
     repository: source.repository,
-    skills: sortSkills(results.flatMap((result) => (result.skill ? [result.skill] : []))),
+    skills: sortSkills(mergeCopies(entries)),
     warnings: [...source.warnings, ...results.flatMap((result) => (result.warning ? [result.warning] : []))],
   };
 }
 
-async function readSkill(source: Source, file: SkillFile): Promise<{ skill?: Skill; warning?: string }> {
+type Entry = { path: string; text: string; skill: Skill };
+
+async function readSkill(source: Source, file: SkillFile): Promise<{ entry?: Entry; warning?: string }> {
   const bytes = await source.read(file.path);
   if (!bytes) return { warning: `${file.path}: listed, but not found at the scanned commit; skipped` };
-  const parsed = parseSkill(new TextDecoder().decode(bytes));
+  const text = new TextDecoder().decode(bytes);
+  const parsed = parseSkill(text);
   const skill: Skill = {
     id: `${source.repository.id}:${file.path}`,
     repository: source.repository.id,
@@ -38,7 +42,17 @@ async function readSkill(source: Source, file: SkillFile): Promise<{ skill?: Ski
     name: parsed.name ?? file.name,
     description: parsed.description,
     commit: source.repository.commit,
-    copies: file.copies,
+    copies: [],
   };
-  return { skill, warning: parsed.warning && `${file.path}: ${parsed.warning}` };
+  return { entry: { path: file.path, text, skill }, warning: parsed.warning && `${file.path}: ${parsed.warning}` };
+}
+
+/** Byte-identical files are the same skill: the alphabetically first path, the rest as copies. */
+function mergeCopies(entries: Entry[]): Skill[] {
+  const groups = new Map<string, Entry[]>();
+  for (const entry of entries) groups.set(entry.text, [...(groups.get(entry.text) ?? []), entry]);
+  return [...groups.values()].map((group) => {
+    const [primary, ...copies] = [...group].sort((a, b) => (a.path < b.path ? -1 : 1));
+    return { ...primary.skill, copies: copies.map((entry) => entry.path).sort() };
+  });
 }

@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
+import { findSkills } from '../src/core/find.ts';
 import { openGitHub } from '../src/core/github.ts';
 import { parseSkill } from '../src/core/parse.ts';
 import { replay } from '../src/core/replay.ts';
@@ -44,16 +45,41 @@ test('./fixture: every skill, sorted by name, linked to its file, with a warning
   assert.equal(
     fixture.stdout,
     [
-      'fixture · 3 skills',
+      'fixture · 4 skills',
       "code-style — Follow the project's code style.",
       `  ${root}/.github/skills/code-style/SKILL.md`,
       'commits — Write commit messages the way this repository does.',
-      `  ${root}/.claude/skills/commits/SKILL.md`,
+      `  ${root}/.agents/skills/commits/SKILL.md`,
+      `  also in .claude/skills/commits/SKILL.md`,
       'release-checklist',
       `  ${root}/.agents/skills/release-checklist/SKILL.md`,
+      'writing-lint-checks — Write a lint check consistently.',
+      `  ${root}/agent/skills/writing-lint-checks/SKILL.md`,
     ].join('\n'),
   );
   assert.match(fixture.stderr, /^warning: \.agents\/skills\/release-checklist\/SKILL\.md: malformed front matter: /);
+});
+
+test('edge cases: shipped and test-data SKILL.md are not counted, even though they are not duplicates', () => {
+  // bundled-skill (shipped under src/) and shared-test-helper (under testFixtures/) are not skills.
+  assert.doesNotMatch(fixture.stdout, /bundled-skill|shared-test-helper/);
+  assert.equal(fixture.stdout.split('\n')[0], 'fixture · 4 skills');
+});
+
+test('findSkills: only SKILL_ROOTS count, at any depth, except under a src/test/fixture ancestor', () => {
+  const paths = [
+    '.claude/skills/a/SKILL.md', // a skill at the root
+    'module/.claude/skills/b/SKILL.md', // a skill nested in a module
+    'module/src/main/resources/.claude/skills/c/SKILL.md', // shipped with the product
+    'module/src/test/resources/.claude/skills/d/SKILL.md', // test data
+    'module/testFixtures/.claude/skills/e/SKILL.md', // test data, camelCase ancestor
+    'docs/skills/f/SKILL.md', // not under a SKILL_ROOTS at all
+    '.claude/skills/build-tools-bump-gradle-in-tests/SKILL.md', // "tests" is the skill's own name, not an ancestor
+  ];
+  assert.deepEqual(
+    findSkills(paths, 'repo').map((file) => file.path),
+    ['.claude/skills/a/SKILL.md', '.claude/skills/build-tools-bump-gradle-in-tests/SKILL.md', 'module/.claude/skills/b/SKILL.md'],
+  );
 });
 
 test('the CLI prints the result at once and stores nothing', (t) => {
