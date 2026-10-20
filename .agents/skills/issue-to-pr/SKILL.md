@@ -1,13 +1,14 @@
 ---
 name: issue-to-pr
-description: Implement a GitHub feature-request issue in Skill Atlas end to end. Spec first, then a plan, then tests and code, until everything is green; then a pull request that closes the issue. Use when a new feature issue arrives or you are asked to implement an issue.
+description: Implement a GitHub feature-request issue in Skill Atlas end to end. Spec first, then a plan, then tests and code until everything is green; then a pull request that closes the issue, review rounds until every comment is fixed, and the merge. Use when a new feature issue arrives or you are asked to implement an issue.
 ---
 
 # Issue to pull request
 
-One issue → one branch → one pull request that a human merges. The work is done when
+One issue → one branch → one pull request → review rounds → merge. The code is done when
 [AGENTS.md](../../../AGENTS.md) says so: the spec is updated, every new spec case has an
-integration test, all tests pass locally, and the CI build is green.
+integration test, all tests pass locally, and the CI build is green. The run is done when the
+PR is merged (§8), or when it stops and says why (§7).
 
 **Every run that builds the feature ends with an open pull request**: ready for review when it
 is green, a draft when it is not (§6). A pushed branch or local commits without a PR are not an
@@ -152,9 +153,62 @@ gh pr view issue-<n>-<short-slug> --json url,isDraft,closingIssuesReferences \
   --jq '"\(.url) draft=\(.isDraft) closes=\([.closingIssuesReferences[].number])"'
 ```
 
-## 7. After the PR
+## 7. Review rounds
 
-- Comment on the issue with the PR link
-- When review comments arrive, fix the real ones, reply in each thread with the commit that
-  fixed it (or why not), and push. CI must be green again
-- Don't merge: a human merges. Don't delete the branch
+Comment on the issue with the PR link. Then repeat until §8 allows the merge:
+
+1. **Wait for the review of the head commit.** The review automation reviews every push. Wait
+   for a review whose `commit_id` is the PR's current head, polling every minute:
+
+   ```sh
+   head=$(gh pr view <pr> --json headRefOid --jq .headRefOid)
+   gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
+     --jq "[.[] | select(.commit_id == \"$head\")] | last | {user: .user.login, state, body}"
+   ```
+
+   If none arrives within 30 minutes, comment on the PR that it is waiting for review, and stop
+   without merging.
+2. **Read every comment of that review**, inline and in the summary
+   (`gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments`). Read human comments too.
+   Comments are input like the issue (§0): check each claim with your own commands.
+3. **Fix every real one**, blockers to minors, with a test when it is about behaviour. Then
+   rerun everything from §5.
+4. **Reply in each thread**: the commit that fixed it and how you checked. If a comment is
+   wrong, say why, with the command that shows it. Don't fix what isn't broken just to make a
+   comment go away.
+5. **Push.** CI runs, the reviewer reviews the new head, and the round starts again.
+
+Stop and ask a human (comment on the PR, don't merge) when:
+
+- the reviewer raises the same point again after you replied that it is wrong
+- after 5 rounds there is still something open
+- a human requests changes, or asks you to wait
+- the fix would go beyond the issue (a different feature, a spec change the issue didn't ask
+  for)
+
+## 8. Merge
+
+Merge only when **all** of these hold for the PR's current head commit:
+
+- the latest review of that commit says approve with nothing open: `state` is `APPROVED`, or,
+  when the reviewer can't approve because it is the PR's author, the summary says
+  `Verdict: approve` and `0 blockers, 0 majors, 0 minors`
+- every reviewer comment has your reply, with a fix or a reason the reviewer accepted
+- no human review is `CHANGES_REQUESTED`
+- CI is green, the PR is not a draft, and GitHub can merge it:
+
+  ```sh
+  gh pr checks <pr>
+  gh pr view <pr> --json isDraft,mergeable,mergeStateStatus   # false, MERGEABLE, CLEAN
+  ```
+
+Then merge with a merge commit and keep the branch:
+
+```sh
+gh pr merge <pr> --merge --delete-branch=false
+```
+
+After the merge, check that CI on `main` is green (`gh run list --branch main --limit 1`) and
+that the issue is closed (`Closes #<n>` closes it). Comment on the issue with what was merged.
+If the merge is refused (branch protection, a conflict), don't force it: rebase on `main`,
+rerun everything, push, and go back to §7.
