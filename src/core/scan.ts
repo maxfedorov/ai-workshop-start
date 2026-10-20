@@ -43,6 +43,7 @@ async function readSkill(source: Source, file: SkillFile): Promise<{ entry?: Ent
     description: parsed.description,
     commit: source.repository.commit,
     copies: [],
+    content: text,
   };
   return { entry: { path: file.path, text, skill }, warning: parsed.warning && `${file.path}: ${parsed.warning}` };
 }
