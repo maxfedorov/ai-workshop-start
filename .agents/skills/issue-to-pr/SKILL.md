@@ -115,10 +115,16 @@ When the feature is done and everything is green, record a demo of it with the
 §5, with the issue and your spec cases as its input. Show the cases a user would try first, in
 the order the spec lists them.
 
-Save the MP4 as `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4`: that is where the PR's video
-comes from, and it is outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step
-deletes. With `AIR_ARTIFACTS_DIR` set, it is also kept as a session artifact. Its §5 report
-gives the path; check that the file is there before going on.
+In its §3, make the MP4 with the slug `issue-<n>` and this output directory:
+
+```sh
+.agents/skills/demo-feature/finish.sh issue-<n> "${AIR_ARTIFACTS_DIR:-/tmp}"
+```
+
+That gives `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4`, where the PR's video comes from. It
+is outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step deletes. With
+`AIR_ARTIFACTS_DIR` set, it is also kept as a session artifact. Check that the file is there,
+and look at the frames finish.sh prints, before going on.
 
 Then put the video where the PR can show it, keyed by your branch name:
 

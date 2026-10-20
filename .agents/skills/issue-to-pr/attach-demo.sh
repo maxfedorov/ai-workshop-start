@@ -14,7 +14,7 @@ set -euo pipefail
 MP4=${1:?usage: attach-demo.sh <video.mp4> <PR branch name>}
 KEY=$(printf '%s' "${2:?usage: attach-demo.sh <video.mp4> <PR branch name>}" | tr -c 'A-Za-z0-9._-' '-')
 [ -s "$MP4" ] || { echo "no video at $MP4" >&2; exit 1; }
-command -v ffmpeg >/dev/null || { echo 'ffmpeg is missing: install it as demo-feature/SKILL.md §1 says' >&2; exit 1; }
+command -v ffmpeg >/dev/null || { echo 'ffmpeg is missing: run .agents/skills/demo-feature/setup.sh' >&2; exit 1; }
 say() { printf '· %s\n' "$*" >&2; }
 
 REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
