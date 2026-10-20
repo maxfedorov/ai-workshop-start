@@ -1,6 +1,6 @@
 // Template for demo-feature/SKILL.md §3. setup.sh copies it into the runner directory as
 // record.mjs; edit the steps between the two markers for the feature being demoed, then:
-//   DEMO_APP_URL=http://127.0.0.1:<port>/ DEMO_CHROME_PATH=<from setup.sh> node record.mjs
+//   DEMO_APP_URL=http://127.0.0.1:<port>/ node record.mjs
 // Produces /tmp/skill-atlas-demo/<hash>.webm, and start-offset for the GIF (see markStart);
 // finish.sh turns them into the MP4 and the GIF.
 import { chromium } from 'playwright';
@@ -11,8 +11,8 @@ const outDir = '/tmp/skill-atlas-demo';
 mkdirSync(outDir, { recursive: true });
 rmSync(`${outDir}/start-offset`, { force: true }); // a previous run's start is not this one's
 
-// Empty DEMO_CHROME_PATH: Playwright's own Chromium. Otherwise the Chrome for Testing setup.sh
-// downloaded when Playwright's CDN was blocked.
+// Playwright's own Chromium, which setup.sh put where Playwright looks for it. DEMO_CHROME_PATH
+// points to another browser, if ever needed.
 const browser = await chromium.launch({ executablePath: process.env.DEMO_CHROME_PATH || undefined });
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },

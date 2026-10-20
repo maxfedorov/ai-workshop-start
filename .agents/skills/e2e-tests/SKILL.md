@@ -20,7 +20,10 @@ part of the definition of done.
 npm run test:e2e
 ```
 
-First run only: `npx playwright install chromium` (downloads once, outside the repository).
+First run only: `scripts/playwright-browsers.sh` (once, outside the repository). It installs
+the browser, and on Linux the libraries and fonts CI's `--with-deps` installs, so screenshots
+match the Linux baselines. It also works where Playwright's CDN is blocked, as in Air's cloud,
+where the environment's warmup has already run it.
 It starts `skill-atlas serve ./fixture` itself — nothing needs to be running first.
 
 ## A failure

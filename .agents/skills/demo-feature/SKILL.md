@@ -12,7 +12,7 @@ Playwright's download CDN.
 
 Three helpers in this directory do the fragile parts:
 
-- `setup.sh`: ffmpeg, the `playwright` package and a Chromium, outside the repository (§1)
+- `setup.sh`: ffmpeg, Playwright's browsers and the system libraries they need (§1)
 - `record-template.mjs`: the recording script to edit (§3)
 - `finish.sh`: the MP4, the GIF, its length and frames to check them by (§3)
 
@@ -43,30 +43,26 @@ SKILL.md. That is the smallest tour that touches scan → filter → detail.
 .agents/skills/demo-feature/setup.sh        # from the repository root
 ```
 
-It ends with one line, `DEMO_CHROME_PATH=…`. Keep that value for §3; an empty one means
-Playwright's own Chromium. What it does, and why:
+It ends with one line, `DEMO_CHROME_PATH=`, now always empty: the browser is where Playwright
+looks for it, so `record.mjs` needs no path. What it does, and why:
 
 - **ffmpeg** on the PATH: `brew install ffmpeg` on macOS, or `sudo -n apt-get install ffmpeg` on
-  Linux. It transcodes the recording to MP4, since Playwright's recorder produces WebM.
-- **The `playwright` package**, at the version `npx --yes playwright --version` resolves,
-  installed in `/tmp/skill-atlas-demo-runner`, not the repository. This repo has no
-  browser-testing dependency, and `issue-to-pr`'s review step expects "no browser installed" (see
-  `.agents/skills/code-review/SKILL.md`). Don't add it to `package.json` unless asked. The script
-  also copies `record-template.mjs` there as `record.mjs`, unless one is already there.
-- **Chromium and Playwright's ffmpeg** via `npx playwright install chromium ffmpeg`. Both are
-  cached outside the repository (`~/.cache/ms-playwright/` on Linux,
-  `~/Library/Caches/ms-playwright/` on macOS), so this is a no-op when they are already there.
-  Without Playwright's ffmpeg, `recordVideo` fails at `newPage` with "Executable doesn't exist
-  at …/ffmpeg-<rev>/ffmpeg-linux".
-- **If that download fails** (seen as `403 Blocked by network policy` from `cdn.playwright.dev`),
-  the script reads the exact builds from `npx playwright install --dry-run chromium ffmpeg` and:
-  - downloads the same Chrome for Testing build from
-    `storage.googleapis.com/chrome-for-testing-public/`, Google's own bucket, which such policies
-    usually allow. It unpacks it into the runner directory with `unzip`, or with Python's zipfile
-    when `unzip` is missing, and then restores the executable bit. Its path becomes
-    `DEMO_CHROME_PATH`;
-  - symlinks the system ffmpeg into Playwright's `ffmpeg-<rev>/` install location. Playwright's
-    recorder runs fine on it.
+  Linux. `finish.sh` makes the MP4 and the GIF with it, since Playwright's recorder writes WebM.
+- **The repository's own Playwright**, the devDependency the e2e tests use (`npm ci` first, if
+  `node_modules` is missing). Nothing extra is installed in the repository.
+- **Its browsers and their system libraries**, through
+  [scripts/playwright-browsers.sh](../../../scripts/playwright-browsers.sh), the same script the
+  e2e tests rely on. It installs Chromium, the headless shell and Playwright's ffmpeg in
+  Playwright's cache (`~/.cache/ms-playwright/` on Linux, `~/Library/Caches/ms-playwright/` on
+  macOS), and does nothing when they are already there. Where Playwright's CDN is blocked (`403
+  Blocked by network policy` from `cdn.playwright.dev`, as in Air's cloud), it downloads the same
+  Chrome for Testing builds from Google's own bucket, `storage.googleapis.com`, into those same
+  places, and links the system ffmpeg in as Playwright's. On Linux it then installs the libraries
+  and fonts Chromium needs (`libnss3`, `libcups2` and the rest), the same set CI's `--with-deps`
+  installs, with passwordless sudo. Last, it launches the browser once to prove it works.
+- **The runner directory**, `/tmp/skill-atlas-demo-runner`, outside the repository: it gets a
+  copy of `record-template.mjs` as `record.mjs` (unless one is there already), and a link to the
+  repository's `node_modules`, so that `record.mjs` imports the repository's Playwright.
 - **Not** the system `chromium-browser`: on Ubuntu it is a shim that only says "requires the
   chromium snap".
 
@@ -117,7 +113,7 @@ once the form is there, before the typing, since the typing is part of the demo.
 
 ```sh
 cd /tmp/skill-atlas-demo-runner
-DEMO_APP_URL=http://127.0.0.1:<port>/ DEMO_CHROME_PATH=<from §1> node record.mjs
+DEMO_APP_URL=http://127.0.0.1:<port>/ node record.mjs
 ```
 
 It writes a `.webm` under `/tmp/skill-atlas-demo/` and prints the final URL. If a locator times
