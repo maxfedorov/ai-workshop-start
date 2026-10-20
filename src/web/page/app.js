@@ -1,5 +1,6 @@
 // The Skill Atlas page: one scan from /api/scan, a filterable list of its skills and the selected
-// SKILL.md. The address holds the state (?source=…&skill=…), so links, reloads and Back work.
+// SKILL.md; or, for an organization, a filterable list of its repositories, each a link to its scan.
+// The address holds the state (?source=…&skill=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
@@ -24,6 +25,8 @@ let visible = [];
 let selected;
 let mode = 'rendered';
 let scans = 0;
+/** The organizations scanned on this page, by source: Back to one shows it without a new scan. */
+const organizations = new Map();
 
 /** An element with attributes and children; strings become text, never HTML. */
 function h(tag, attributes = {}, ...children) {
@@ -61,7 +64,8 @@ async function sync() {
   if (!result || (source && source !== result.source)) {
     if (!(await scan(source))) return;
   }
-  select(skill);
+  if (result.organization) renderOrganization();
+  else select(skill);
 }
 
 // The scan
@@ -72,11 +76,16 @@ async function scan(source) {
   showState('loading', source);
   let response;
   let data;
-  try {
-    response = await fetch(`/api/scan?source=${encodeURIComponent(source)}`);
-    data = await response.json();
-  } catch {
-    data = { error: response ? `The server answered ${response.status}` : 'Cannot reach the Skill Atlas server. Is it still running?' };
+  if (organizations.has(source)) {
+    data = organizations.get(source);
+    response = { ok: true, status: 200 };
+  } else {
+    try {
+      response = await fetch(`/api/scan?source=${encodeURIComponent(source)}`);
+      data = await response.json();
+    } catch {
+      data = { error: response ? `The server answered ${response.status}` : 'Cannot reach the Skill Atlas server. Is it still running?' };
+    }
   }
   if (ticket !== scans) return false;
   if (!response?.ok) {
@@ -87,10 +96,15 @@ async function scan(source) {
     return false;
   }
   result = data;
+  selected = undefined;
+  if (data.organization) organizations.set(data.source, data);
   page.source.value = data.source;
   if (!address().source) history.replaceState(null, '', href({ source: data.source, skill: address().skill }));
-  document.title = `${data.repository.id} · Skill Atlas`;
-  renderRepository();
+  document.title = `${(data.organization ?? data.repository).id} · Skill Atlas`;
+  page.filter.placeholder = data.organization ? 'Filter repositories' : 'Filter skills';
+  page.filter.setAttribute('aria-label', page.filter.placeholder);
+  if (data.organization) renderOrganizationHeader();
+  else renderRepository();
   renderWarnings();
   renderList();
   document.body.dataset.state = 'ready';
@@ -130,12 +144,22 @@ function showState(state, source, message) {
   }
 }
 
+/** The organization this repository was chosen from on this page, if it was. */
+function parentOrganization(repository) {
+  return [...organizations.values()].find((organization) => organization.repositories.some((candidate) => candidate.id === repository.id));
+}
+
 function renderRepository() {
   const { repository } = result;
   const local = !repository.commit;
   const place = local ? decodeURIComponent(new URL(repository.url).pathname) : repository.url;
+  const parent = parentOrganization(repository);
   page.repo.replaceChildren(
     h('span', { class: 'repo-planet', 'aria-hidden': 'true' }),
+    // replaceChildren, unlike h, would show a null as text.
+    ...(parent
+      ? [h('a', { class: 'repo-parent', href: href({ source: parent.source }), title: `Back to ${parent.organization.id}`, onclick: (event) => follow(event, { source: parent.source }) }, `${parent.organization.id} /`)]
+      : []),
     local
       ? h('span', { class: 'repo-name', title: place }, repository.id)
       : h('a', { class: 'repo-name', href: repository.url, target: '_blank', rel: 'noopener noreferrer', title: 'Open the repository on GitHub' }, `${repository.id} ↗`),
@@ -152,13 +176,32 @@ function renderWarnings() {
   page.warnings.querySelector('ul').replaceChildren(...warnings.map((warning) => h('li', {}, warning)));
 }
 
+function renderOrganizationHeader() {
+  const { organization } = result;
+  page.repo.replaceChildren(
+    h('span', { class: 'repo-planet', 'aria-hidden': 'true' }),
+    h('a', { class: 'repo-name', href: organization.url, target: '_blank', rel: 'noopener noreferrer', title: 'Open the organization on GitHub' }, `${organization.id} ↗`),
+    h('span', { class: 'commit' }, 'organization'),
+  );
+}
+
 // The list
+
+/** A plain click on a link goes through the page; any other click is the browser's own. */
+function follow(event, state) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  document.body.dataset.view = 'list';
+  page.filter.value = '';
+  go(state);
+}
 
 function terms() {
   return page.filter.value.toLowerCase().split(/\s+/).filter(Boolean);
 }
 
 function renderList() {
+  if (result.organization) return renderRepositories();
   const words = terms();
   visible = result.skills.filter((skill) => {
     const haystack = `${skill.name} ${skill.description} ${skill.path}`.toLowerCase();
@@ -191,11 +234,70 @@ function renderList() {
   )));
 }
 
+function count(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+/** The organization's repositories that the filter leaves, the ones with skills first, each a link to its scan. */
+function renderRepositories() {
+  const words = terms();
+  const { repositories } = result;
+  visible = repositories.filter((repository) => words.every((word) => repository.id.toLowerCase().includes(word)));
+  const withSkills = repositories.filter((repository) => repository.skills > 0).length;
+  page.count.textContent = words.length
+    ? `${visible.length} of ${count(repositories.length, 'repository', 'repositories')}`
+    : `${count(repositories.length, 'repository', 'repositories')} · ${withSkills} with skills`;
+  if (visible.length === 0) {
+    page.list.replaceChildren(h('li', { class: 'empty' }, repositories.length ? 'No repository matches the filter.' : 'No repositories in this organization.'));
+    return;
+  }
+  page.list.replaceChildren(...visible.map((repository) => h('li', {},
+    h('a', {
+      class: 'skill-item',
+      href: href({ source: repository.url }),
+      onclick: (event) => follow(event, { source: repository.url }),
+    },
+      h('span', { class: 'skill-name' }, highlight(repository.id.split('/')[1], words)),
+      h('span', { class: repository.skills ? 'skill-summary' : 'skill-summary muted' }, repository.skills ? count(repository.skills, 'skill', 'skills') : 'no skills'),
+      h('span', { class: 'skill-path mono' }, highlight(repository.id, words)),
+    ),
+  )));
+}
+
 /** The text with the filter's words marked. */
 function highlight(text, words) {
   if (words.length === 0) return text;
   const pattern = new RegExp(`(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
   return text.split(pattern).map((part, index) => (index % 2 ? h('mark', {}, part) : part));
+}
+
+// The organization
+
+/** How many repositories and skills, and the repositories with skills, each a link to its scan. */
+function renderOrganization() {
+  const { organization, repositories } = result;
+  const withSkills = repositories.filter((repository) => repository.skills > 0);
+  const skills = withSkills.reduce((sum, repository) => sum + repository.skills, 0);
+  page.detail.replaceChildren(h('article', { class: 'skill' },
+    h('header', { class: 'skill-head' },
+      h('p', { class: 'eyebrow mono' }, 'Organization'),
+      h('h1', { class: 'skill-title' }, organization.id),
+      h('p', { class: 'skill-description' },
+        `${count(repositories.length, 'repository', 'repositories')}, ${withSkills.length} with skills: ${count(skills, 'skill', 'skills')} in all.`),
+      h('div', { class: 'actions' },
+        h('a', { class: 'button primary', href: organization.url, target: '_blank', rel: 'noopener noreferrer' }, 'Open on GitHub ↗'),
+      ),
+    ),
+    withSkills.length
+      ? h('ul', { class: 'repositories' }, withSkills.map((repository) => h('li', {},
+        h('a', { class: 'repository-card', href: href({ source: repository.url }), onclick: (event) => follow(event, { source: repository.url }) },
+          h('span', { class: 'repository-name' }, repository.id),
+          h('span', { class: 'repository-count' }, count(repository.skills, 'skill', 'skills')),
+        ),
+      )))
+      : h('p', { class: 'muted' }, 'No repository of this organization has skills.'),
+  ));
+  page.detail.scrollTop = 0;
 }
 
 // The selected skill
@@ -329,6 +431,13 @@ function inList(target) {
 
 function move(step) {
   if (!result || visible.length === 0) return;
+  if (result.organization) {
+    // Choosing a repository scans it, so the arrows only move the focus; Enter opens it.
+    const items = [...page.list.querySelectorAll('.skill-item')];
+    const index = items.indexOf(document.activeElement);
+    items[Math.max(0, Math.min(items.length - 1, index < 0 ? 0 : index + step))].focus();
+    return;
+  }
   const index = visible.indexOf(selected);
   const next = visible[Math.max(0, Math.min(visible.length - 1, index < 0 ? 0 : index + step))];
   choose(next, { replace: true });
@@ -341,6 +450,7 @@ page.form.addEventListener('submit', (event) => {
   page.filter.value = '';
   result = undefined;
   selected = undefined;
+  organizations.delete(source); // asked for again: scanned again
   document.body.dataset.view = 'list';
   go({ source });
 });
@@ -348,6 +458,7 @@ page.form.addEventListener('submit', (event) => {
 page.filter.addEventListener('input', () => {
   if (!result) return;
   renderList();
+  if (result.organization) return;
   if (visible.length && !visible.includes(selected)) choose(visible[0], { replace: true });
 });
 
@@ -357,7 +468,8 @@ page.filter.addEventListener('keydown', (event) => {
     move(event.key === 'ArrowDown' ? 1 : -1);
   } else if (event.key === 'Enter') {
     event.preventDefault();
-    if (selected) {
+    if (result?.organization) page.list.querySelector('.skill-item')?.focus();
+    else if (selected) {
       document.body.dataset.view = 'detail';
       page.detail.focus();
     }

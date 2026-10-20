@@ -1,6 +1,6 @@
 # Repository analysis
 ## Input
-A **GitHub repository** URL, or a local directory
+A **GitHub repository** URL, a local directory, or a **GitHub organization**; see [Organization](#organization)
 ## Output
 Every `SKILL.md`: **name**, **description**, **link**
 ## Architecture
@@ -22,3 +22,14 @@ Only a `SKILL.md` under one of `SKILL_ROOTS` — `.agents/skills`, `.claude/skil
   `testFixtures`) → not counted
 - Elsewhere, outside every `SKILL_ROOTS` → ignored, *silently*: most of a repository
   is not skills, and that is not a warning
+## Organization
+A **GitHub organization** or user URL, `https://github.com/<owner>`: every repository,
+and how many skills each has.
+- **Repositories**: the owner's *own*, archived ones included; *forks* left out: code search
+  does not look in them, and their skills are their upstream's
+- **Skills**: found by *one* code search over the whole owner; counted as in a repository
+  scan: copies once, shipped and test data not
+- Only a `SKILL.md` outside `SKILL_ROOTS` → the repository has *no* skills
+- No `GITHUB_TOKEN` → a clear message, exit code 1: code search needs it
+- Unknown owner → a clear message, exit code 1
+- More than *1000* `SKILL.md` → a *warning*: code search stops there, the scan goes on

@@ -1,5 +1,5 @@
 import { findSkills, type SkillFile } from './find.ts';
-import { sortSkills, type Repository, type Skill } from './model.ts';
+import { sortRepositories, sortSkills, type Organization, type Repository, type RepositorySummary, type Skill } from './model.ts';
 import { parseSkill } from './parse.ts';
 
 /** A repository to scan: its files, and how to read them. */
@@ -14,6 +14,21 @@ export type Source = {
 };
 
 export type ScanResult = { repository: Repository; skills: Skill[]; warnings: string[] };
+
+/** An organization to scan: its repositories, the files in each that may be skills, and how to open one. */
+export type OrganizationSource = {
+  organization: Organization;
+  repositories: { id: string; url: string; paths: string[]; open(): Promise<Source> }[];
+  /** What listing the files had to leave out. */
+  warnings: string[];
+};
+
+export type OrganizationScanResult = { organization: Organization; repositories: RepositorySummary[]; warnings: string[] };
+
+/** What the user asked to scan: a repository, or an organization of them. */
+export function isOrganization(source: Source | OrganizationSource): source is OrganizationSource {
+  return 'organization' in source;
+}
 
 /** fetch → find → parse. Nothing is stored: the result is all there is. */
 export async function scan(source: Source): Promise<ScanResult> {
@@ -56,4 +71,23 @@ function mergeCopies(entries: Entry[]): Skill[] {
     const [primary, ...copies] = [...group].sort((a, b) => (a.path < b.path ? -1 : 1));
     return { ...primary.skill, copies: copies.map((entry) => entry.path).sort() };
   });
+}
+
+/**
+ * Each repository's skills, counted as `scan` finds them. Only a repository with a SKILL.md where
+ * a skill can be is opened and read; the others have none.
+ */
+export async function scanOrganization(source: OrganizationSource): Promise<OrganizationScanResult> {
+  const results = await Promise.all(
+    source.repositories.map(async (repository) => {
+      if (findSkills(repository.paths, repository.id).length === 0) return { repository, skills: 0, warnings: [] };
+      const { skills, warnings } = await scan(await repository.open());
+      return { repository, skills: skills.length, warnings: warnings.map((warning) => `${repository.id}: ${warning}`) };
+    }),
+  );
+  return {
+    organization: source.organization,
+    repositories: sortRepositories(results.map(({ repository, skills }) => ({ id: repository.id, url: repository.url, skills }))),
+    warnings: [...source.warnings, ...results.flatMap((result) => result.warnings)],
+  };
 }

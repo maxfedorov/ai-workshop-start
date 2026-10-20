@@ -6,10 +6,15 @@ A local page over the same scan; *nothing is stored*.
 - The **skills**: name, first sentence and path, *filtered as you type*
 - The selected skill's **SKILL.md**: *rendered*, or its *source*; its link, path, copies and front matter
 - Another repository: scanned from the page
+- An **organization**: how many repositories, how many with skills; each repository and its
+  number of skills, *the ones with skills first*, filtered as you type
+- A repository chosen from the organization → its skills; its header leads back to the
+  organization, and *Back* returns to it *without scanning it again*
 - The URL holds the source and the skill: links, reloads and *Back* work
 - Keyboard: `/` filters, `↑` `↓` choose, `Esc` clears the filter
 ## Details
 - `GET /api/scan?source=…`: the scan as JSON; without `source`, the one `serve` was given
+- An organization's JSON: `organization`, its `repositories`, each with `skills`, a number
 - No source → 400; a failure explained to the user → 422 and its *message*
 - Markdown is *escaped first*: no HTML from a repository reaches the page
 - Links: only http(s), mailto and anchors; relative ones resolve against the SKILL.md's *link*
