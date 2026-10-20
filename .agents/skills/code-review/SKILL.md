@@ -50,13 +50,13 @@ Then run what the change touches:
 - **Core or CLI**: the command on the input the change is about, compared with `main`
 - **Server** (`src/web/*.ts`): `./skill-atlas serve ./fixture --port 0`, then `curl` the
   routes and check the status, the headers and the JSON
-- **Page** (`src/web/page/`): `curl` proves nothing here. If a headless browser is available,
-  load the page and assert on what a user gets: computed styles, the DOM, console errors.
-  Emulate what the change depends on, such as `page.emulateMedia({ reducedMotion: 'reduce' })`
-  or a 390 px viewport. The Air cloud environment has none for now: its network policy blocks
-  `cdn.playwright.dev`, and the repository does not install a browser. Then don't spend time
-  trying. Give exact manual steps, mark the comment *manual*, keep only what you are sure of
-  from the code, and say `page: manual, no browser` in `Checked`
+- **Page** (`src/web/page/`): `npm run test:e2e` (see
+  [e2e-tests](../e2e-tests/SKILL.md)) — the DOM assertions and screenshot comparisons it runs
+  are exactly "what a user gets", already written, no ad hoc browser session needed. If a
+  screenshot was updated by the change, check the new PNG is what it should be, and say so. If
+  Playwright's Chromium can't be installed here (a blocked download, for example), say
+  `page: not run, <why>` in `Checked`, give exact manual steps instead, and keep only what you
+  are sure of from the code
 
 Write down which checks passed and which failed: they go in the summary.
 

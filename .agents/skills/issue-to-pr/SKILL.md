@@ -95,15 +95,18 @@ reasonable way without one, and if you do, say why in the PR.
 2. Run `npm test` and watch the new ones fail for the right reason.
 3. Write the code until they pass. Follow the code around it: its comment density, its names,
    its idioms.
-4. Run everything:
+4. Run everything, **always including the e2e tests** — they're part of the definition of done
+   ([AGENTS.md](../../../AGENTS.md)), whether or not this change touches the page:
 
    ```sh
-   npm run typecheck && npm test
+   npm run typecheck && npm test && npm run test:e2e
    ./skill-atlas help && ./skill-atlas scan ./fixture
    ```
 
-For a change to the page (`src/web/page/`), also load it in a headless browser if one is
-available, and say in the PR what you checked there. If none is available, say so.
+For a change to the page (`src/web/page/`), a failing `test:e2e` screenshot needs a look before
+it's accepted: see [e2e-tests](../e2e-tests/SKILL.md) for reading the diff and updating the
+baseline, committed in this same change. If Playwright's Chromium can't be installed here (a
+blocked download, for example), say so in the PR instead of skipping it quietly.
 
 If something is still red after a few honest attempts, don't hide it: open the PR as a
 **draft**, and say what fails and what you tried.
@@ -173,7 +176,7 @@ Closes #<n>.
 <files and why; anything left out of scope, and why>
 
 ## Tests
-<each spec case → its test>. Checked: typecheck ✔, npm test N/N ✔, smoke ✔
+<each spec case → its test>. Checked: typecheck ✔, npm test N/N ✔, e2e N/N ✔, smoke ✔
 
 <the contents of demo.md from §6, or "## Demo" and why there is no video>
 
