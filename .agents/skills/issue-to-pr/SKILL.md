@@ -163,13 +163,15 @@ as reviews too, so never take "the latest review" without filtering by the revie
 
 1. **Wait for the reviewer's review of the head commit.** It reviews every push. Poll every
    minute. This prints nothing until the review exists, then exactly one line, whatever the
-   number of pages:
+   number of pages. Thread replies are reviews with an empty body; a real review always has a
+   summary, so `.body != ""` keeps the replies out, also when you post under the reviewer's
+   login:
 
    ```sh
    REVIEWER='jetbrains-air[bot]'
    head=$(gh pr view <pr> --json headRefOid --jq .headRefOid)
    gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
-     --jq ".[] | select(.commit_id == \"$head\" and .user.login == \"$REVIEWER\") | {id, state, body}" \
+     --jq ".[] | select(.commit_id == \"$head\" and .user.login == \"$REVIEWER\" and .body != \"\") | {id, state, body}" \
      | tail -n 1
    ```
 
