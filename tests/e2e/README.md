@@ -23,8 +23,11 @@ npm run test:e2e
 
 This starts `skill-atlas serve ./fixture` itself (see `webServer` in
 [playwright.config.ts](../../playwright.config.ts)) — nothing needs to be running first. First
-time only: `npx playwright install chromium` downloads the browser (outside the repository,
-`~/Library/Caches/ms-playwright/` on macOS, `~/.cache/ms-playwright/` on Linux).
+time only: `scripts/playwright-browsers.sh` installs the browser (outside the repository,
+`~/Library/Caches/ms-playwright/` on macOS, `~/.cache/ms-playwright/` on Linux) and, on Linux, the
+libraries and fonts it needs: the same set CI's `--with-deps` installs, so screenshots match CI's
+Linux baselines. Where Playwright's CDN is blocked, as in Air's cloud, it takes the same builds
+from Chrome for Testing. In Air, the environment's warmup has already run it.
 
 A failure prints which assertion failed. For a screenshot mismatch, it also prints three paths:
 

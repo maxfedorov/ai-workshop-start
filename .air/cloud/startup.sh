@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Air cloud startup: Node toolchain + npm dependencies for Skill Atlas.
-# WARMUP (snapshot-baking) runs also prove the environment with `healthcheck`.
+# Air cloud startup: Node toolchain, npm dependencies, and the browser the e2e tests and demo
+# videos need, for Skill Atlas. WARMUP (snapshot-baking) runs also prove the environment with
+# `healthcheck`.
 set -euo pipefail
 
 if [ "${AIR_STARTUP_MODE:-}" = warmup ]; then WARMUP=1; else WARMUP=; fi
@@ -30,6 +31,19 @@ log "installing dependencies (npm ci)"
 npm ci --no-audit --no-fund
 log "dependencies installed"
 
+# Playwright's Chromium, its system libraries and ffmpeg: `npm run test:e2e` (AGENTS.md's
+# definition of done) and demo-feature's recordings need them. Air's network policy blocks
+# Playwright's CDN; the scripts fall back to Chrome for Testing. The warmup bakes it all into the
+# snapshot, so a task only checks that it is still there; there, a failure is a warning, not a
+# reason to keep the task from starting.
+if [ -n "${WARMUP:-}" ]; then
+  log "installing the browser, its libraries and ffmpeg (demo-feature/setup.sh)"
+  .agents/skills/demo-feature/setup.sh >/dev/null
+  log "browser ready"
+elif ! scripts/playwright-browsers.sh; then
+  log "warning: the browser is not ready; npm run test:e2e and demo videos will fail until scripts/playwright-browsers.sh succeeds"
+fi
+
 healthcheck() {
   log "healthcheck: typecheck"
   npm run typecheck
@@ -38,6 +52,9 @@ healthcheck() {
   log "healthcheck: CLI smoke test on ./fixture"
   ./skill-atlas help >/dev/null
   ./skill-atlas scan ./fixture
+  log "healthcheck: e2e tests in the browser"
+  npm run test:e2e
+  rm -rf test-results playwright-report
   log "healthcheck: OK"
 }
 

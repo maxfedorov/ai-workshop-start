@@ -53,8 +53,9 @@ Then run what the change touches:
 - **Page** (`src/web/page/`): `npm run test:e2e` (see
   [e2e-tests](../e2e-tests/SKILL.md)) — the DOM assertions and screenshot comparisons it runs
   are exactly "what a user gets", already written, no ad hoc browser session needed. If a
-  screenshot was updated by the change, check the new PNG is what it should be, and say so. If
-  Playwright's Chromium can't be installed here (a blocked download, for example), say
+  screenshot was updated by the change, check the new PNG is what it should be, and say so. No
+  browser yet? `scripts/playwright-browsers.sh` installs it, also where Playwright's CDN is
+  blocked, as in Air's cloud. If even that fails, say
   `page: not run, <why>` in `Checked`, give exact manual steps instead, and keep only what you
   are sure of from the code
 
