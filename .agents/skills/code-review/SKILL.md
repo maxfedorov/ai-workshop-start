@@ -6,8 +6,8 @@ description: Review a pull request, a branch or uncommitted changes in Skill Atl
 # Code review
 
 A review is **short**: a few lines of summary, then inline comments. Each comment points at
-one line and says how to see the problem. Report only what you reproduced yourself; leave out
-anything you could not reproduce.
+one line and says how to see the problem. Report only what you reproduced, or are sure of from
+the code, and say which in `Verified`. Leave out anything you only suspect.
 
 ## 1. Get the change
 
@@ -21,9 +21,18 @@ touches. Then read the changed files around the diff, not just the diff itself.
 Read the PR description as a list of claims ("both stay still under reduced motion", "the CLI
 output is unchanged") and check each one. A claim the code does not keep is a finding.
 
-If you already reviewed this PR, read your earlier comments first
-(`gh api repos/{owner}/{repo}/pulls/<n>/comments`). Do not post them again. Say in the
-summary which ones are fixed, and comment only on what is new or still broken.
+If you already reviewed this PR, read your earlier review first: both the summaries and the
+inline comments, keeping only the ones whose `user.login` is yours:
+
+```sh
+gh api --paginate repos/{owner}/{repo}/pulls/<n>/reviews
+gh api --paginate repos/{owner}/{repo}/pulls/<n>/comments
+```
+
+After a push, an old comment's `line` is `null`; it was on `original_line`. The author's
+replies (`in_reply_to_id`) hint at what is fixed, but check each fix yourself. Do not post an
+old comment again. Say in the summary which ones are fixed, and comment only on what is new
+or still broken.
 
 ## 2. Run it
 
@@ -39,12 +48,13 @@ Then run what the change touches:
 - **Core or CLI**: the command on the input the change is about, compared with `main`
 - **Server** (`src/web/*.ts`): `./skill-atlas serve ./fixture --port 0`, then `curl` the
   routes and check the status, the headers and the JSON
-- **Page** (`src/web/page/`): `curl` proves nothing here. Load the page in a headless browser
-  (Playwright with Chromium, if you can get one) and assert on what a user gets: computed
-  styles, the DOM, console errors. Emulate what the change depends on, such as
-  `page.emulateMedia({ reducedMotion: 'reduce' })` or a 390 px viewport. If no browser is
-  available, give exact manual steps, mark the comment *manual*, and keep only what you are
-  sure of from the code
+- **Page** (`src/web/page/`): `curl` proves nothing here. If a headless browser is available,
+  load the page and assert on what a user gets: computed styles, the DOM, console errors.
+  Emulate what the change depends on, such as `page.emulateMedia({ reducedMotion: 'reduce' })`
+  or a 390 px viewport. The Air cloud environment has none for now: its network policy blocks
+  `cdn.playwright.dev`, and the repository does not install a browser. Then don't spend time
+  trying. Give exact manual steps, mark the comment *manual*, keep only what you are sure of
+  from the code, and say `page: manual, no browser` in `Checked`
 
 Write down which checks passed and which failed: they go in the summary.
 
@@ -81,6 +91,7 @@ Earlier comments: <2 fixed, 1 still open>   (only on a repeat review)
 ```
 
 Verdict: any blocker or major → *request changes*; only minors → *comment*; nothing → *approve*.
+Post it as that review `event` (see §5), so that *request changes* really blocks the merge.
 
 **Inline comments**: one per problem, on the changed line (the new side of the diff):
 
@@ -106,7 +117,7 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews -X POST --input review.json
 
 ```json
 {
-  "event": "COMMENT",
+  "event": "<REQUEST_CHANGES | COMMENT | APPROVE, from the verdict>",
   "body": "<summary>",
   "comments": [{ "path": "src/core/scan.ts", "line": 42, "side": "RIGHT", "body": "<comment>" }]
 }
