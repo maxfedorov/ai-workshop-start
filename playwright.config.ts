@@ -11,6 +11,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
+  // Locally, a new case's first run writes its baseline and passes. On CI, a missing or
+  // mismatched screenshot must fail outright — never silently adopted as the new baseline.
+  updateSnapshots: process.env.CI ? 'none' : 'missing',
   expect: {
     // A little slack for anti-aliasing; a real regression is almost never this close.
     toHaveScreenshot: { maxDiffPixelRatio: 0.01 },

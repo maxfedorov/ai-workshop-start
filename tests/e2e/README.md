@@ -6,9 +6,14 @@ baseline committed in [web.spec.ts-snapshots/](web.spec.ts-snapshots/) — so a 
 (broken layout, a style that stopped applying, truncated text) fails the test even when every
 other assertion passes.
 
-These do not run in CI (see [AGENTS.md](../../AGENTS.md)): screenshots are sensitive to the
-machine that renders them (fonts, GPU, OS), so a baseline is only meaningful on the machine
-that made it. Run them yourself, locally, before every push.
+Run them yourself, locally, before every push (see [AGENTS.md](../../AGENTS.md)) — they also
+run in CI on every push and pull request, and a pull request can only merge once that run is
+green.
+
+Screenshots are sensitive to the machine that renders them (fonts, GPU, OS), so Playwright
+names each baseline after the OS it was made on — `*-chromium-darwin.png` locally on macOS,
+`*-chromium-linux.png` for CI. Both are committed, side by side; your local run only ever
+touches the one for your OS.
 
 ## Running
 
@@ -61,6 +66,21 @@ automatically a bug.
   git add tests/e2e/web.spec.ts-snapshots/
   git commit -m "Update the skill-list screenshot for <the change>"
   ```
+
+  That updates your OS's baseline only. CI runs on Linux, so also update the Linux one: run the
+  **Update e2e screenshots** workflow (Actions tab, or `gh workflow run update-e2e-snapshots.yml
+  --ref <your branch>`) — it regenerates `*-chromium-linux.png` on an actual Linux runner and
+  pushes the result to your branch. Pull it (`git pull`) before pushing anything else.
+
+## CI failures
+
+On CI, a missing or mismatched screenshot always fails the job — unlike locally, it is never
+silently written as a new baseline (`updateSnapshots: process.env.CI ? 'none' : 'missing'` in
+[playwright.config.ts](../../playwright.config.ts)). A failed run uploads an `e2e-report`
+artifact with the HTML report and `test-results/` (expected, actual and diff PNGs for every
+failure) — download it from the run's **Summary** page. Decide the same way as above: a real
+regression gets a code fix; an intended change gets its Linux baseline updated through the
+workflow above.
 
 ## Writing a new case
 

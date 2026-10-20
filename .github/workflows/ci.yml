@@ -27,3 +27,18 @@ jobs:
         run: |
           ./skill-atlas help
           ./skill-atlas scan ./fixture
+      - run: npx playwright install --with-deps chromium
+      # Starts the web view itself (./fixture, see playwright.config.ts) and checks it in a
+      # real browser: DOM assertions plus a screenshot of each key moment against the
+      # committed Linux baseline in tests/e2e/web.spec.ts-snapshots/.
+      - run: npm run test:e2e
+      # A mismatch's expected/actual/diff PNGs, kept for whoever reviews the failed run.
+      - name: Upload e2e failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

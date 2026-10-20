@@ -7,8 +7,10 @@ description: Run and maintain Skill Atlas's end-to-end browser tests and their s
 
 [tests/e2e/](../../../tests/e2e/README.md) checks the web view in a real headless Chromium:
 DOM assertions plus a screenshot of the relevant region, compared against a baseline committed
-in `tests/e2e/web.spec.ts-snapshots/`. They are **not** part of CI (screenshots only mean
-anything on the machine that made them) — which is exactly why an agent must run them itself.
+in `tests/e2e/web.spec.ts-snapshots/` — one per OS (`-darwin`, `-linux`), since rendering
+differs between them. They run in CI too, and a PR can only merge once that run is green, but a
+screenshot mismatch only shows locally against *your own* OS's baseline, so run them yourself
+regardless.
 
 **Run them before every push, whether or not this run touched the web view**, and treat any
 failure as blocking: per [AGENTS.md](../../../AGENTS.md), `npm run test:e2e` passing locally is
@@ -49,10 +51,21 @@ Read what failed before touching anything:
     ```
 
     Look at the new PNG once before committing — accepting a screenshot you haven't looked at
-    defeats the point of having one.
+    defeats the point of having one. This only updates *your* OS's baseline; also trigger the
+    **Update e2e screenshots** workflow (`gh workflow run update-e2e-snapshots.yml --ref
+    <branch>`) to regenerate the Linux one CI checks against, then `git pull` what it pushes
+    before pushing anything else.
 
 A case with no baseline yet (a new `toHaveScreenshot(...)` call) writes one on its own and
-passes, with a console note that it did; look at it before committing it too.
+passes locally, with a console note that it did — but fails outright on CI, which never writes
+a baseline on its own (`updateSnapshots: 'none'` there). Look at the local PNG, commit it, then
+run the update workflow above for the Linux one before the PR can go green.
+
+## A CI failure
+
+A failed run uploads an `e2e-report` artifact: the HTML report plus `test-results/`, which has
+the expected, actual and diff PNG for every mismatch — download it from the run's summary page
+and decide the same way as a local failure (above).
 
 ## Adding a case
 
