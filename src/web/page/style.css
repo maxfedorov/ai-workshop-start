@@ -375,6 +375,7 @@ body[data-state='ready'] .state-panel { display: none; }
 }
 .skill-path { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .skill-list .empty { padding: 18px 12px; color: var(--muted); font-size: 13.5px; text-align: center; }
+.skill-list .empty .button { display: block; margin: 10px auto 0; }
 
 mark { color: #fff; background: rgba(240, 171, 252, 0.3); border-radius: 3px; padding: 0 1px; }
 

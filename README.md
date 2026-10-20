@@ -17,7 +17,7 @@ build-tools-bump-gradle-api — Bumps the Gradle API version that Kotlin Gradle 
 with skills, and each with its number of skills. It needs `GITHUB_TOKEN`: GitHub code search finds the skills.
 
 `./skill-atlas serve [GitHub URL | directory]` opens the same in the browser, at http://127.0.0.1:3000/:
-the skills, filtered as you type, and each SKILL.md rendered or as its source (`--port`, `--host`).
+the skills, filtered as you type (`"a phrase"`, `-word`, `name:`, `path:`), and each SKILL.md rendered or as its source (`--port`, `--host`).
 
 Set `GITHUB_TOKEN` for a higher GitHub rate limit. `npm test` runs the tests.
 

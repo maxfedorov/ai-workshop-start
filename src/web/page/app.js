@@ -1,7 +1,9 @@
 // The Skill Atlas page: one scan from /api/scan, a filterable list of its skills and the selected
 // SKILL.md; or, for an organization, a filterable list of its repositories, each a link to its scan.
-// The address holds the state (?source=…&skill=…), so links, reloads and Back work.
+// The address holds the state (?source=…&skill=…&q=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
+import { addressOf, readAddress } from './address.js';
+import { filterSkills, marked, parseFilter } from './filter.js';
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
 
@@ -41,16 +43,12 @@ function h(tag, attributes = {}, ...children) {
 }
 
 function address() {
-  const query = new URLSearchParams(location.search);
-  return { source: query.get('source') ?? '', skill: query.get('skill') ?? '' };
+  return readAddress(location.search);
 }
 
-function href({ source, skill }) {
-  const query = new URLSearchParams();
-  if (source) query.set('source', source);
-  if (skill) query.set('skill', skill);
-  const search = query.toString();
-  return `${location.pathname}${search ? `?${search}` : ''}`;
+/** The address of a state; the filter, unless given, is the one being typed. */
+function href({ source, skill, filter = page.filter.value }) {
+  return addressOf(location.pathname, { source, skill, filter });
 }
 
 function go(state, { replace = false } = {}) {
@@ -60,10 +58,12 @@ function go(state, { replace = false } = {}) {
 
 /** Brings the page in line with the address: scans when the source changed, then selects. */
 async function sync() {
-  const { source, skill } = address();
+  const { source, skill, filter } = address();
+  const refiltered = filter !== page.filter.value.trim();
+  if (refiltered) page.filter.value = filter;
   if (!result || (source && source !== result.source)) {
     if (!(await scan(source))) return;
-  }
+  } else if (refiltered) renderList();
   if (result.organization) renderOrganization();
   else select(skill);
 }
@@ -126,7 +126,7 @@ function showState(state, source, message) {
       h('h1', { class: 'hero-title' }, 'Every agent skill in a repository'),
       h('p', { class: 'state-text' }, 'Enter a GitHub URL or a local directory above. Skill Atlas finds each SKILL.md and lets you read it.'),
       h('div', { class: 'examples' }, h('span', { class: 'muted' }, 'Try'), EXAMPLES.map((example) =>
-        h('button', { class: 'chip', type: 'button', onclick: () => go({ source: example }) }, example.replace('https://github.com/', '')),
+        h('button', { class: 'chip', type: 'button', onclick: () => go({ source: example, filter: '' }) }, example.replace('https://github.com/', '')),
       )),
     );
     page.source.focus();
@@ -158,7 +158,7 @@ function renderRepository() {
     h('span', { class: 'repo-planet', 'aria-hidden': 'true' }),
     // replaceChildren, unlike h, would show a null as text.
     ...(parent
-      ? [h('a', { class: 'repo-parent', href: href({ source: parent.source }), title: `Back to ${parent.organization.id}`, onclick: (event) => follow(event, { source: parent.source }) }, `${parent.organization.id} /`)]
+      ? [h('a', { class: 'repo-parent', href: href({ source: parent.source, filter: '' }), title: `Back to ${parent.organization.id}`, onclick: (event) => follow(event, { source: parent.source }) }, `${parent.organization.id} /`)]
       : []),
     local
       ? h('span', { class: 'repo-name', title: place }, repository.id)
@@ -196,23 +196,18 @@ function follow(event, state) {
   go(state);
 }
 
-function terms() {
-  return page.filter.value.toLowerCase().split(/\s+/).filter(Boolean);
-}
-
 function renderList() {
   if (result.organization) return renderRepositories();
-  const words = terms();
-  visible = result.skills.filter((skill) => {
-    const haystack = `${skill.name} ${skill.description} ${skill.path}`.toLowerCase();
-    return words.every((word) => haystack.includes(word));
-  });
+  const terms = parseFilter(page.filter.value);
+  visible = filterSkills(result.skills, terms);
   const total = result.skills.length;
-  page.count.textContent = words.length
+  page.count.textContent = terms.length
     ? `${visible.length} of ${total} ${total === 1 ? 'skill' : 'skills'}`
     : `${total} ${total === 1 ? 'skill' : 'skills'}`;
   if (visible.length === 0) {
-    page.list.replaceChildren(h('li', { class: 'empty' }, total ? 'No skill matches the filter.' : 'No SKILL.md in this repository.'));
+    page.list.replaceChildren(total
+      ? h('li', { class: 'empty' }, 'No skill matches the filter.', h('button', { class: 'button', type: 'button', onclick: clearFilter }, 'Clear the filter'))
+      : h('li', { class: 'empty' }, 'No SKILL.md in this repository.'));
     return;
   }
   page.list.replaceChildren(...visible.map((skill) => h('li', {},
@@ -227,39 +222,51 @@ function renderList() {
         choose(skill, { open: true });
       },
     },
-      h('span', { class: 'skill-name' }, highlight(skill.name, words), skill.warning ? h('span', { class: 'badge warn', title: skill.warning }, '!') : null),
-      skill.summary ? h('span', { class: 'skill-summary' }, highlight(skill.summary, words)) : null,
-      h('span', { class: 'skill-path mono' }, highlight(skill.path, words)),
+      h('span', { class: 'skill-name' }, highlight(skill.name, marked(terms, 'name')), skill.warning ? h('span', { class: 'badge warn', title: skill.warning }, '!') : null),
+      skill.summary ? h('span', { class: 'skill-summary' }, highlight(skill.summary, marked(terms, 'description'))) : null,
+      h('span', { class: 'skill-path mono' }, highlight(skill.path, marked(terms, 'path'))),
     ),
   )));
+}
+
+function clearFilter() {
+  page.filter.value = '';
+  page.filter.dispatchEvent(new Event('input'));
+  page.filter.focus();
 }
 
 function count(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The organization's repositories that the filter leaves, the ones with skills first, each a link to its scan. */
+/**
+ * The organization's repositories that the filter leaves, the ones with skills first, each a link
+ * to its scan. The skills' filter, with a repository's name as its name and `owner/name` as its path.
+ */
 function renderRepositories() {
-  const words = terms();
+  const terms = parseFilter(page.filter.value);
   const { repositories } = result;
-  visible = repositories.filter((repository) => words.every((word) => repository.id.toLowerCase().includes(word)));
+  const fields = repositories.map((repository) => ({ repository, name: repository.id.split('/')[1], description: '', path: repository.id }));
+  visible = filterSkills(fields, terms).map((field) => field.repository);
   const withSkills = repositories.filter((repository) => repository.skills > 0).length;
-  page.count.textContent = words.length
+  page.count.textContent = terms.length
     ? `${visible.length} of ${count(repositories.length, 'repository', 'repositories')}`
     : `${count(repositories.length, 'repository', 'repositories')} · ${withSkills} with skills`;
   if (visible.length === 0) {
-    page.list.replaceChildren(h('li', { class: 'empty' }, repositories.length ? 'No repository matches the filter.' : 'No repositories in this organization.'));
+    page.list.replaceChildren(repositories.length
+      ? h('li', { class: 'empty' }, 'No repository matches the filter.', h('button', { class: 'button', type: 'button', onclick: clearFilter }, 'Clear the filter'))
+      : h('li', { class: 'empty' }, 'No repositories in this organization.'));
     return;
   }
   page.list.replaceChildren(...visible.map((repository) => h('li', {},
     h('a', {
       class: 'skill-item',
-      href: href({ source: repository.url }),
+      href: href({ source: repository.url, filter: '' }),
       onclick: (event) => follow(event, { source: repository.url }),
     },
-      h('span', { class: 'skill-name' }, highlight(repository.id.split('/')[1], words)),
+      h('span', { class: 'skill-name' }, highlight(repository.id.split('/')[1], marked(terms, 'name'))),
       h('span', { class: repository.skills ? 'skill-summary' : 'skill-summary muted' }, repository.skills ? count(repository.skills, 'skill', 'skills') : 'no skills'),
-      h('span', { class: 'skill-path mono' }, highlight(repository.id, words)),
+      h('span', { class: 'skill-path mono' }, highlight(repository.id, marked(terms, 'path'))),
     ),
   )));
 }
@@ -290,7 +297,7 @@ function renderOrganization() {
     ),
     withSkills.length
       ? h('ul', { class: 'repositories' }, withSkills.map((repository) => h('li', {},
-        h('a', { class: 'repository-card', href: href({ source: repository.url }), onclick: (event) => follow(event, { source: repository.url }) },
+        h('a', { class: 'repository-card', href: href({ source: repository.url, filter: '' }), onclick: (event) => follow(event, { source: repository.url }) },
           h('span', { class: 'repository-name' }, repository.id),
           h('span', { class: 'repository-count' }, count(repository.skills, 'skill', 'skills')),
         ),
@@ -458,8 +465,9 @@ page.form.addEventListener('submit', (event) => {
 page.filter.addEventListener('input', () => {
   if (!result) return;
   renderList();
-  if (result.organization) return;
-  if (visible.length && !visible.includes(selected)) choose(visible[0], { replace: true });
+  if (!result.organization && visible.length && !visible.includes(selected)) choose(visible[0], { replace: true });
+  // Typing keeps the filter in the address, without an entry per key.
+  history.replaceState(null, '', href({ source: result.source, skill: selected?.path }));
 });
 
 page.filter.addEventListener('keydown', (event) => {
