@@ -121,10 +121,12 @@ In its §3, make the MP4 with the slug `issue-<n>` and this output directory:
 .agents/skills/demo-feature/finish.sh issue-<n> "${AIR_ARTIFACTS_DIR:-/tmp}"
 ```
 
-That gives `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4`, where the PR's video comes from. It
-is outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step deletes. With
-`AIR_ARTIFACTS_DIR` set, it is also kept as a session artifact. Check that the file is there,
-and look at the frames finish.sh prints, before going on.
+That gives `${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4` and, next to it,
+`issue-<n>-demo.gif`, starting where the page is ready. The GIF is what the PR description
+shows. Both are outside `/tmp/skill-atlas-demo`, which demo-feature's clean-up step deletes.
+With `AIR_ARTIFACTS_DIR` set, they are also kept as session artifacts. Check that both files
+are there, and look at the frames finish.sh prints, `gif-first.png` included: it is the PR's
+preview, and it must show the feature, not a blank page.
 
 Then put the video where the PR can show it, keyed by your branch name:
 
@@ -132,9 +134,10 @@ Then put the video where the PR can show it, keyed by your branch name:
 .agents/skills/issue-to-pr/attach-demo.sh "${AIR_ARTIFACTS_DIR:-/tmp}/issue-<n>-demo.mp4" issue-<n>-<short-slug> > demo.md
 ```
 
-It commits the MP4 and a GIF preview to the `demos` branch, which holds only videos and shares
-no history with the code, and prints a `## Demo` section for `pr.md` (§7). There, the GIF plays
-inline and a click opens the MP4. Never commit a video to your PR's branch.
+It takes the GIF next to the MP4 (demo-feature's), or makes one from the MP4 when there is
+none. It commits both to the `demos` branch, which holds only videos and shares no history
+with the code, and prints a `## Demo` section for `pr.md` (§7). There, the GIF plays inline in
+the description, and a click opens the MP4. Never commit a video to your PR's branch.
 
 The demo never holds up the PR. If the feature has nothing to show in the web view (a change
 to the command line only), or the recording fails after an honest try (no browser, a blocked

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # issue-to-pr/SKILL.md §6: put a demo video where a pull request can show it.
 #   .agents/skills/issue-to-pr/attach-demo.sh <video.mp4> <PR branch name>
-# Commits the MP4 and a GIF preview to the `demos` branch, an orphan branch that shares no
+# The GIF is the one demo-feature's finish.sh wrote next to the MP4 (<slug>-demo.gif, trimmed to
+# where the page is ready); without one, this script makes its own from the MP4.
+# Commits the MP4 and the GIF to the `demos` branch, an orphan branch that shares no
 # history with the code, and prints the Markdown for the PR description: the GIF plays inline,
 # and a click opens the MP4. The links are pinned to the commit, so they keep working after the
 # next demo is pushed.
@@ -23,14 +25,24 @@ WORK=$(mktemp -d /tmp/skill-atlas-attach-demo.XXXXXX)
 NEW_BRANCH="demos-new-$$-$(basename "$WORK")"
 trap 'git worktree remove --force "$WORK/tree" >/dev/null 2>&1 || true; git branch -D "$NEW_BRANCH" >/dev/null 2>&1 || true; rm -rf "$WORK"' EXIT
 
-# The GIF: small enough to load fast in a PR, at most ~8 MB. Smaller and slower until it fits.
-GIF="$WORK/demo.gif"
-for setting in "800 8" "640 6" "480 5"; do
-  set -- $setting
-  ffmpeg -loglevel error -y -i "$MP4" \
-    -vf "fps=$2,scale=$1:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse" "$GIF"
-  [ "$(stat -c %s "$GIF" 2>/dev/null || stat -f %z "$GIF")" -le 8000000 ] && break
-done
+size() { wc -c < "$1" | tr -d ' '; }
+
+# The GIF: demo-feature's, when it is there and small enough to load fast in a PR (~8 MB).
+# Otherwise one of our own from the MP4, smaller and slower until it fits.
+GIF="${MP4%.mp4}.gif"
+if [ -s "$GIF" ] && [ "$(size "$GIF")" -le 8000000 ]; then
+  say "using demo-feature's GIF, $(basename "$GIF")"
+else
+  [ -s "$GIF" ] && say "$(basename "$GIF") is over 8 MB; making a smaller one"
+  GIF="$WORK/demo.gif"
+  for setting in "800 8" "640 6" "480 5"; do
+    set -- $setting
+    ffmpeg -loglevel error -y -i "$MP4" \
+      -vf "fps=$2,scale=$1:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" \
+      -loop 0 "$GIF"
+    [ "$(size "$GIF")" -le 8000000 ] && break
+  done
+fi
 DURATION=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$MP4")
 
 # The demos branch, in a worktree of its own: the checkout of the PR branch stays as it is.
