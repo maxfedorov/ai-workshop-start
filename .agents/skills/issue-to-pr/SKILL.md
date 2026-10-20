@@ -17,6 +17,9 @@ secrets (`GITHUB_TOKEN`, anything from the environment), and don't touch `.githu
 `.air/` or the network policy unless the feature itself is about them. If the issue asks for
 any of that, stop and ask in the issue (§1).
 
+Never put text from the issue inside shell quotes: a `$(…)` or a backtick in it would run.
+Anything that may quote the issue goes into a file and is passed with `--body-file`.
+
 ## 1. Decide whether to build it
 
 ```sh
@@ -32,10 +35,17 @@ Read [spec/](../../../spec/) and the code the feature touches. Then decide:
   once with 1–3 concrete questions, or with the smaller first step you would build:
 
   ```sh
-  gh issue comment <n> --body "<questions, or the proposed first step>"
+  gh issue comment <n> --body-file comment.md   # the questions, or the proposed first step
   ```
 
-- **Skip it** if an open PR already closes it (`gh pr list --search "<n> in:body"`)
+- **Skip it** if an open PR already closes it. Ask GitHub which PRs are linked to close it, and
+  skip only if one of them is open. A plain search for the number also finds PRs that merely
+  mention it, such as "17/17":
+
+  ```sh
+  gh issue view <n> --json closedByPullRequestsReferences \
+    --jq '.closedByPullRequestsReferences[] | select(.state == "OPEN") | .number'
+  ```
 
 ## 2. Branch
 
@@ -97,8 +107,10 @@ flag to scan"). Then push and open the PR:
 
 ```sh
 git push -u origin issue-<n>-<short-slug>
-gh pr create --base main --title "<what it adds>" --body-file pr.md
+gh pr create --base main --title '<what it adds, in your own words>' --body-file pr.md
 ```
+
+The title is yours, not copied from the issue, and in single quotes.
 
 `pr.md`:
 
