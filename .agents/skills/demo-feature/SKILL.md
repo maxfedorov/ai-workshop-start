@@ -1,11 +1,11 @@
 ---
 name: demo-feature
-description: Record a short browser demo video of a Skill Atlas feature. Opens (or reuses) the web view in Chromium, performs the feature's interaction, and saves an MP4. Use when asked for a video demo of a feature, a branch or a PR.
+description: Record a short browser demo video of a Skill Atlas feature. Opens (or reuses) the web view in Chromium, performs the feature's interaction, and saves an MP4 and a GIF. Use when asked for a video demo of a feature, a branch or a PR.
 ---
 
 # Demo a feature
 
-Produces one short MP4 showing a feature working in the browser: the web view performing the
+Produces one short MP4, and a GIF of it, showing a feature working in the browser: the web view performing the
 feature's interaction, start to finish, with nothing left running or installed in the
 repository afterwards. Works on macOS and Linux, including sandboxes whose network policy blocks
 Playwright's download CDN.
@@ -14,7 +14,7 @@ Three helpers in this directory do the fragile parts:
 
 - `setup.sh`: ffmpeg, the `playwright` package and a Chromium, outside the repository (§1)
 - `record-template.mjs`: the recording script to edit (§3)
-- `finish.sh`: the MP4, its length and frames to check it by (§3)
+- `finish.sh`: the MP4, the GIF, its length and frames to check them by (§3)
 
 ## 0. Input
 
@@ -107,6 +107,14 @@ the feature from §0. That means which source to scan, what to type into `#filte
 `tests/` shows which inputs give which results. Keep each result on screen ~1–2 s; 15–30 s is
 usually enough.
 
+Keep the template's `markStart()` where the demo begins: right after the first
+`waitForSelector('#skill-list li')` when `serve` was given the source, as the template has it.
+It records how far into the video the page was ready, in `/tmp/skill-atlas-demo/start-offset`,
+and the GIF starts there; the recording itself begins with a blank page. When the demo scans
+from the page's own form instead, use the template's `scanFromForm(source)`: it marks the start
+once the form is there, before the typing, since the typing is part of the demo. Only the first
+`markStart()` counts.
+
 ```sh
 cd /tmp/skill-atlas-demo-runner
 DEMO_APP_URL=http://127.0.0.1:<port>/ DEMO_CHROME_PATH=<from §1> node record.mjs
@@ -120,14 +128,28 @@ from the repository root:
 .agents/skills/demo-feature/finish.sh <feature-slug>
 ```
 
-It writes `<feature-slug>-demo.mp4` (H.264, plays everywhere) to `$AIR_ARTIFACTS_DIR` when set,
-so the video is kept as a session artifact. Otherwise it goes to `~/Desktop`, or `~` when there
-is no Desktop. Pass a directory as the second argument to override it. The script prints the
-video's path, its duration and five frames spread over it.
+It writes two files to `$AIR_ARTIFACTS_DIR` when set, so they are kept as session artifacts.
+Otherwise they go to `~/Desktop`, or `~` when there is no Desktop. Pass a directory as the
+second argument to override it.
+
+- `<feature-slug>-demo.mp4`: H.264, the whole recording; plays everywhere
+- `<feature-slug>-demo.gif`: the same from `markStart()` on (from the beginning without a mark),
+  for a PR description or a chat, where a GIF plays inline. Made with a palette of its own, two
+  passes, since the page's dark gradient bands badly without one. 960 px wide at 12 fps by
+  default, which gives about 3 MB for 25 s. `DEMO_GIF_WIDTH` and `DEMO_GIF_FPS` change that.
+  Over 8 MB, the script prints a hint to lower them
+
+It prints `video=`, `duration=`, `frames=` (five frames spread over the MP4), then `gif=`,
+`gif_size=` (bytes), `gif_start=` (seconds cut from the start) and `gif_first_frame=`.
 
 **Look at the frames** (read the PNGs) before reporting. Check that each shows what the step
-meant to show: the filter typed, the right skills listed, the empty state, the opened skill. If
-not, fix `record.mjs`, record again and re-run `finish.sh`.
+meant to show: the filter typed, the right skills listed, the empty state, the opened skill.
+Read `gif-first.png` too. It is the GIF's first frame, the preview people see before it plays,
+and it must show the loaded page, not a blank one. If not, fix `record.mjs` (where
+`markStart()` is), record again and re-run `finish.sh`.
+
+Reading the GIF itself with an image-reading tool shows only its first frame. To see it move,
+open it by its link.
 
 ## 4. Clean up
 
@@ -139,6 +161,7 @@ not, fix `record.mjs`, record again and re-run `finish.sh`.
 
 ## 5. Report
 
-Give the video as a link, with its length, and say in one sentence what it shows. Follow with
+Give both files as links, the GIF and the MP4, with the length and the GIF's size, and say in
+one sentence what they show. Follow with
 the steps it walks through, one line each. Mention any workaround §1 had to take (blocked CDN,
 installed ffmpeg), and anything the frames showed that looks off in the feature itself.
