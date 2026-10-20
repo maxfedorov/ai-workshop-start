@@ -176,7 +176,8 @@ signed with **your** skill name, `issue-to-pr`:
    "🛠 Taken by `issue-to-pr`…", and check that your claim is the earliest live one. Then fix
    it, run every check, commit, and push in the order of address-review §4 step 3 (check it is still yours, rebase, check again, push), and always reply after a push with `<!-- skill-done: issue-to-pr <sha> -->`
    and "✅ Fixed by `issue-to-pr` in <sha>…", or with a reasoned `no-change` answer.
-5. Wait for CI on your push. Red CI from your fix belongs to the same finding.
+5. Wait for CI on your push. Red CI from your fix belongs to the same finding: fix it under a
+   renewed claim, even though step 3 counts the finding as done for everyone else.
 
 A check that finds nothing open does nothing, not even a comment. A fix that is still running
 when the hour ends is finished and reported; no new finding is claimed after the hour. If you

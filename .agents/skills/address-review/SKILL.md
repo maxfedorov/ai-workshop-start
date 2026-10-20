@@ -39,9 +39,9 @@ ignored.
 ```sh
 BOT='jetbrains-air[bot]'
 
-# The findings: id, file, line
+# The findings: id, URL, file, line. "The finding URL" is always this html_url.
 gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
-  --jq ".[] | select(.in_reply_to_id == null and .user.login == \"$BOT\") | \"\(.id) \(.path):\(.line // .original_line)\""
+  --jq ".[] | select(.in_reply_to_id == null and .user.login == \"$BOT\") | \"\(.id) \(.html_url) \(.path):\(.line // .original_line)\""
 
 # The markers in the thread of finding <id>, oldest first: time, kind, skill
 gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
@@ -63,16 +63,18 @@ to fix it. If you can't tell, ask in the thread instead of claiming it.
 
 Otherwise, from the markers, a finding is:
 
-- **done** if it has a result, or if the branch already has a fix for it: every fix commit
-  carries `Review: <finding URL>`, and a fix can be pushed a moment before its result is
-  posted. If the reviewer still disagrees, it raises a new finding.
+- **done** if it has a result, or if the branch already has a fix for it. A fix can be pushed
+  a moment before its result is posted, so the branch counts too. Every fix commit carries two
+  lines (§4): `Review: <finding URL>` and `Skill: <skill>`. If the reviewer still disagrees,
+  it raises a new finding.
 
   ```sh
-  # The fix commits for this finding: a line that is exactly "Review: <URL>", anywhere in the
-  # message. Anchored, so a longer discussion id doesn't match; dots escaped, so they are dots.
+  # The fix commits for this finding, and which skill made each one. "Review: <URL>" must be a
+  # whole line: anchored, so a longer discussion id doesn't match; dots escaped, so they are dots.
   url='<finding URL>'
-  git fetch origin && git log --format='%h %s' origin/<headRefName> \
-    --grep="^Review: $(printf '%s' "$url" | sed 's/[][\.*^$]/\\&/g')\$"
+  git fetch origin
+  git log --format=%h origin/<headRefName> --grep="^Review: $(printf '%s' "$url" | sed 's/[][\.*^$]/\\&/g')\$" \
+    | while read -r sha; do echo "$sha $(git show -s --format=%B "$sha" | sed -n 's/^Skill: //p' | head -n 1)"; done
   ```
 - **taken** if its earliest *live* claim is another skill's. Leave it alone: that agent is
   working on it.
@@ -146,12 +148,13 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
 
    ```sh
    npm run typecheck && npm test && ./skill-atlas help && ./skill-atlas scan ./fixture
-   git commit -m "<what the fix does>" -m "Review: <finding URL>"
+   git commit -m "<what the fix does>" -m "Review: <finding URL>" -m "Skill: address-review"
    ```
 
-   Here *still yours* means: your claim is the earliest live one, the thread has no result,
-   and `origin/<headRefName>` has no other commit with this finding's `Review:` line (the
-   `git log` of §1).
+   Here *still yours* means: your claim is the earliest live one, the thread has no result
+   **by another skill**, and `origin/<headRefName>` has no fix commit for this finding **by
+   another skill** (the `git log` of §1 prints each one's `Skill:`). Your own earlier result
+   and commit don't count against you: they are what a follow-up fix builds on.
 
    1. **Check it is still yours.** Otherwise *give it up* (below).
    2. **Rebase**: `git pull --rebase origin <headRefName>`. On a conflict, check again: if it
@@ -187,7 +190,8 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
    `skill-claim` reply saying what is left.
 
 Then wait for CI on your commit (`gh pr checks <pr> --watch`). If it goes red because of your
-fix, fix it under a renewed claim and report again.
+fix, fix it under a renewed claim and report again. The finding is *done* for the other
+agents, but not for you: a follow-up for your own fix is still yours.
 
 ## 5. Finish
 
