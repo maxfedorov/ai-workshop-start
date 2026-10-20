@@ -63,7 +63,19 @@ to fix it. If you can't tell, ask in the thread instead of claiming it.
 
 Otherwise, from the markers, a finding is:
 
-- **done** if it has a result. If the reviewer still disagrees, it raises a new finding.
+- **done** if it has a result, or if the branch already has a fix for it: every fix commit
+  carries `Review: <finding URL>`, and a fix can be pushed a moment before its result is
+  posted. If the reviewer still disagrees, it raises a new finding.
+
+  ```sh
+  # The fix commits for this finding: the Review trailer must equal the URL exactly
+  # (a plain --grep also matches a longer discussion id that starts with this one)
+  git fetch origin && git log --format='%h %(trailers:key=Review,valueonly,separator=%x2C)' origin/<headRefName> \
+    | awk -v url='<finding URL>' '$2 == url {print $1}'
+  ```
+
+  Keep `Review: <finding URL>` as the last paragraph of every fix commit's message, so that git
+  reads it as a trailer.
 - **taken** if its earliest *live* claim is another skill's. Leave it alone: that agent is
   working on it.
 - **yours** if its earliest live claim is yours.
@@ -139,13 +151,15 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
    git commit -m "<what the fix does>" -m "Review: <finding URL>"
    ```
 
-   1. **Read the markers.** Go on only if your claim is still the earliest live one and the
-      thread has no result yet. Otherwise *give it up* (below).
-   2. **Rebase**: `git pull --rebase origin <headRefName>`. On a conflict, read the markers
-      again: if another agent has fixed the finding, `git rebase --abort` and give it up. If
-      not, resolve the conflict, and if the rebase brought someone else's commits, run the
-      checks again.
-   3. **Read the markers once more**, then push: `git push origin HEAD:<headRefName>`.
+   Here *still yours* means: your claim is the earliest live one, the thread has no result,
+   and `origin/<headRefName>` has no other commit with this finding's `Review:` line (the
+   `git log` of §1).
+
+   1. **Check it is still yours.** Otherwise *give it up* (below).
+   2. **Rebase**: `git pull --rebase origin <headRefName>`. On a conflict, check again: if it
+      is no longer yours, `git rebase --abort` and give it up. If it is, resolve the conflict,
+      and if the rebase brought someone else's commits, run the checks again.
+   3. **Check once more**, then push: `git push origin HEAD:<headRefName>`.
 
    To *give it up*, leave the branch as it is on GitHub and say why in the thread, "Gave this
    up to `<skill>`, which took over" or "Already fixed in <sha>":
