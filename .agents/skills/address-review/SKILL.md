@@ -35,9 +35,11 @@ gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
   | tail -n 1
 ```
 
-If it says there is nothing left to fix (`state` is `APPROVED`, or the summary's first line
-starts with `Verdict: approve` and it counts `0 blockers, 0 majors, 0 minors`), **stop here**: no claims, no
-comments, no commits, no changes. Say so in your last message, and that's the whole run.
+It says there is nothing left to fix when its `state` is `APPROVED`, or when the summary's
+first line starts with `Verdict: approve`. By code-review's rules an approve means nothing is
+open, and a reviewer that is also the PR's author can only post it as a comment. Then **stop
+here**: no claims, no comments, no commits, no changes. Say so in your last message, and that
+is the whole run.
 
 If there is no review of the head yet, or it lists findings, go on.
 

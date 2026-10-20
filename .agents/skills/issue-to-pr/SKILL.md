@@ -165,8 +165,8 @@ signed with **your** skill name, `issue-to-pr`. *Yours* means this run's: the cl
 POSTs returned and the shas it pushed, never just the skill name.
 
 1. **The verdict first** (address-review §1): if the reviewer's latest review of the head
-   commit says nothing is left to fix (`APPROVED`, or a summary that starts with
-   `Verdict: approve` and counts 0 blockers, majors and minors), the hour ends here: no claims, no comments, no changes.
+   commit says nothing is left to fix (`APPROVED`, or a summary whose first line starts with
+   `Verdict: approve`), the hour ends here: no claims, no comments, no changes.
 2. **Humans** (address-review §4): read the PR's comments and reviews by the repository's
    people since the last check. If one asks the agents to stop, wait or not push, stop: no new
    claims, no pushes.
