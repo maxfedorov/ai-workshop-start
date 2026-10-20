@@ -163,22 +163,27 @@ after the PR.
 Each check follows the protocol of [address-review](../address-review/SKILL.md), §1–§4,
 signed with **your** skill name, `issue-to-pr`:
 
-1. List the findings, the reviewer's top-level inline comments (address-review §1).
-2. Skip every finding that is already claimed, by any skill, `address-review` included. That
-   agent is fixing it. Skip the ones with a `skill-done` result too.
-3. For each open finding, oldest first: claim it in its thread with
-   `<!-- skill-claim: issue-to-pr -->` and "🛠 Taken by `issue-to-pr`…", and check that your
-   claim is the earliest (address-review §3). Then fix it, run every check, commit, push, and
-   reply with `<!-- skill-done: issue-to-pr <sha> -->` and "✅ Fixed by `issue-to-pr` in
-   <sha>…", or with a reasoned `no-change` answer (address-review §4).
-4. Wait for CI on your push. Red CI from your fix is part of the same claim.
+1. **Humans first** (address-review §3): read the PR's comments and reviews by the
+   repository's people since the last check. If one asks the agents to stop, wait or not
+   push, stop: no new claims, no pushes.
+2. **List the findings and their markers** (address-review §1). Only markers by
+   `jetbrains-air[bot]` count.
+3. **Skip** every finding that is done, and every one whose earliest live claim belongs to
+   another skill, `address-review` included. That agent is fixing it.
+4. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
+   "🛠 Taken by `issue-to-pr`…", and check that your claim is the earliest live one. Then fix
+   it, run every check, commit, push, and reply with `<!-- skill-done: issue-to-pr <sha> -->`
+   and "✅ Fixed by `issue-to-pr` in <sha>…", or with a reasoned `no-change` answer.
+5. Wait for CI on your push. Red CI from your fix belongs to the same finding.
 
 A check that finds nothing open does nothing, not even a comment. A fix that is still running
-when the hour ends is finished and reported; no new finding is claimed after the hour.
+when the hour ends is finished and reported; no new finding is claimed after the hour. If you
+can't finish it, say so in its thread: its claim stops being live an hour after it was posted,
+and another agent can take it over.
 
-Stop early, without claiming anything new, and say why in a PR comment, when a human asks you
-to stop or wait, or when a finding asks for something beyond the issue (a different feature,
-a spec change the issue didn't ask for). Answer that finding with `no-change` and the reason.
+Stop early, and say why in a PR comment, when a finding asks for something beyond the issue
+(a different feature, a spec change the issue didn't ask for). Answer that finding with
+`no-change` and the reason.
 
 At the end, don't merge, don't close the PR, and don't mark it as approved. End the run with
 the PR URL and a short list: which findings `issue-to-pr` fixed (with commits), which it

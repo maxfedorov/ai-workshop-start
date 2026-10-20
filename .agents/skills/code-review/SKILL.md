@@ -125,6 +125,8 @@ gh api repos/{owner}/{repo}/pulls/<n>/reviews -X POST --input review.json
 }
 ```
 
-`line` must be a line of the diff. A comment about a line the change did not touch goes in
-the summary. GitHub does not let you approve or request changes on your own PR, so use
+`line` must be a line of the diff. A finding about a line the change did not touch goes on
+the nearest changed line of the same file, or on the PR's first changed line, with the real
+place in `Where`. Every finding is an inline comment, never only in the summary: agents
+address findings thread by thread ([address-review](../address-review/SKILL.md)). GitHub does not let you approve or request changes on your own PR, so use
 `COMMENT` there.
