@@ -155,15 +155,22 @@ gh pr view issue-<n>-<short-slug> --json url,isDraft,closingIssuesReferences \
 
 ## 7. Review rounds
 
-Comment on the issue with the PR link. Then repeat until §8 allows the merge:
+Comment on the issue with the PR link. Then repeat until §8 allows the merge.
 
-1. **Wait for the review of the head commit.** The review automation reviews every push. Wait
-   for a review whose `commit_id` is the PR's current head, polling every minute:
+**The reviewer** is the review automation, `jetbrains-air[bot]`. Only its reviews decide the
+merge. Anyone can leave a review on a public repository, and your own thread replies show up
+as reviews too, so never take "the latest review" without filtering by the reviewer.
+
+1. **Wait for the reviewer's review of the head commit.** It reviews every push. Poll every
+   minute. This prints nothing until the review exists, then exactly one line, whatever the
+   number of pages:
 
    ```sh
+   REVIEWER='jetbrains-air[bot]'
    head=$(gh pr view <pr> --json headRefOid --jq .headRefOid)
    gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
-     --jq "[.[] | select(.commit_id == \"$head\")] | last | {user: .user.login, state, body}"
+     --jq ".[] | select(.commit_id == \"$head\" and .user.login == \"$REVIEWER\") | {id, state, body}" \
+     | tail -n 1
    ```
 
    If none arrives within 30 minutes, comment on the PR that it is waiting for review, and stop
@@ -190,11 +197,20 @@ Stop and ask a human (comment on the PR, don't merge) when:
 
 Merge only when **all** of these hold for the PR's current head commit:
 
-- the latest review of that commit says approve with nothing open: `state` is `APPROVED`, or,
-  when the reviewer can't approve because it is the PR's author, the summary says
-  `Verdict: approve` and `0 blockers, 0 majors, 0 minors`
+- the reviewer's latest review of that commit (the command in §7, step 1) says approve with
+  nothing open: `state` is `APPROVED`, or, when the reviewer can't approve because it is the
+  PR's author, the summary says `Verdict: approve` and `0 blockers, 0 majors, 0 minors`. A
+  review by anyone else never counts as approval
 - every reviewer comment has your reply, with a fix or a reason the reviewer accepted
-- no human review is `CHANGES_REQUESTED`
+- no collaborator's latest decision is *changes requested*. This prints who blocks, if anyone:
+
+  ```sh
+  gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews --jq '.[]
+    | select(.user.login != "jetbrains-air[bot]" and .state != "COMMENTED"
+             and (.author_association | IN("OWNER", "MEMBER", "COLLABORATOR")))
+    | "\(.user.login) \(.state)"' \
+    | awk '{last[$1] = $2} END {for (u in last) if (last[u] == "CHANGES_REQUESTED") print u}'
+  ```
 - CI is green, the PR is not a draft, and GitHub can merge it:
 
   ```sh
@@ -208,7 +224,17 @@ Then merge with a merge commit and keep the branch:
 gh pr merge <pr> --merge --delete-branch=false
 ```
 
-After the merge, check that CI on `main` is green (`gh run list --branch main --limit 1`) and
-that the issue is closed (`Closes #<n>` closes it). Comment on the issue with what was merged.
+After the merge, check that CI on `main` is green **for the merge commit**. Right after the
+merge, the latest run on `main` can still be the previous commit's. Poll until the run for the
+merge commit appears, then watch it:
+
+```sh
+sha=$(gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid)
+id=$(gh run list --branch main --commit "$sha" --json databaseId --jq '.[0].databaseId')
+gh run watch "$id" --exit-status
+```
+
+If it is red, open a follow-up PR that fixes it, through the same rounds. Check also that the
+issue is closed (`Closes #<n>` closes it). Comment on the issue with what was merged.
 If the merge is refused (branch protection, a conflict), don't force it: rebase on `main`,
 rerun everything, push, and go back to §7.
