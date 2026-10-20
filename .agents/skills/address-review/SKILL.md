@@ -142,10 +142,13 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
 
    If the rebase brings someone else's commits, run the checks again before pushing.
 
-   **Just before `git push`, and again before the result, read the markers once more.** If
-   your claim is no longer the earliest live one (it ran out and another agent took over),
-   don't push and don't report. Drop your change (`git reset --hard origin/<headRefName>`),
-   and say in the thread: "Gave this up to `<skill>`, which took over."
+   **Just before `git push`, read the markers once more.** Push only if your claim is still
+   the earliest live one and the thread has no result yet. Otherwise don't push: drop your
+   change (`git reset --hard origin/<headRefName>`) and say in the thread why, "Gave this up
+   to `<skill>`, which took over" or "Already fixed in <sha>".
+
+   **Once you have pushed, always report the result** (step 4), even if your claim has run out
+   in the meantime: the fix is on the branch, and the result is what tells the others.
 
 4. **Report** in the same thread, within the hour of your claim:
 
