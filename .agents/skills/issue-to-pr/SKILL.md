@@ -160,24 +160,37 @@ Comment on the issue with the PR link. Then, for **one hour** after the PR is cr
 the PR **every 5 minutes** for new code-review comments: 12 checks, the first one 5 minutes
 after the PR.
 
-Each check follows the protocol of [address-review](../address-review/SKILL.md), §1–§4,
-signed with **your** skill name, `issue-to-pr`:
+Each check follows the protocol of [address-review](../address-review/SKILL.md), §1–§5,
+signed with **your** skill name, `issue-to-pr`. *Yours* means this run's: the claim ids its
+POSTs returned and the shas it pushed, never just the skill name.
 
-1. **Humans first** (address-review §3): read the PR's comments and reviews by the
-   repository's people since the last check. If one asks the agents to stop, wait or not
-   push, stop: no new claims, no pushes.
-2. **List the findings and their markers** (address-review §1). Only markers by
+1. **The verdict first** (address-review §1): if the reviewer's latest review of the head
+   commit says nothing is left to fix (`APPROVED`, or a summary that starts with
+   `Verdict: approve` and counts 0 blockers, majors and minors), the hour ends here: no claims, no comments, no changes.
+2. **Humans** (address-review §4): read the PR's comments and reviews by the repository's
+   people since the last check. If one asks the agents to stop, wait or not push, stop: no new
+   claims, no pushes.
+3. **List the findings and their markers** (address-review §2). Only markers by
    `jetbrains-air[bot]` count.
-3. **Skip** every finding that is done (a result in its thread, or a commit on the branch
-   with its `Review:` line), every one a human has answered in its thread, and
-   every one whose earliest live claim belongs to another skill, `address-review` included.
-   That agent is fixing it.
-4. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
-   "🛠 Taken by `issue-to-pr`…", and check that your claim is the earliest live one. Then fix
-   it, run every check, commit, and push in the order of address-review §4 step 3 (check it is still yours, rebase, check again, push), and always reply after a push with `<!-- skill-done: issue-to-pr <sha> -->`
-   and "✅ Fixed by `issue-to-pr` in <sha>…", or with a reasoned `no-change` answer.
-5. Wait for CI on your push. Red CI from your fix belongs to the same finding: fix it under a
-   renewed claim, even though step 3 counts the finding as done for everyone else.
+4. **Skip** every finding that is done (a result in its thread, or a fix commit on the branch
+   with its `Review:` line) unless it is this run's own, every one a human has answered in its
+   thread, and every one whose earliest live claim isn't this run's: another skill's, or
+   another run's. That agent is fixing it.
+5. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
+   "🛠 Taken by `issue-to-pr`…", keep the claim's id, and check that it is the earliest live
+   claim. Then fix it, run every check, and commit with exactly these lines:
+
+   ```sh
+   git commit -m "<what the fix does>" -m "Review: <finding html_url>" -m "Skill: issue-to-pr" -m "Claim: <your claim id>"
+   ```
+
+   Push in the order of address-review §5 step 3 (check it is still yours, rebase, check
+   again, push). After a push, always reply with `<!-- skill-done: issue-to-pr <sha> -->` and
+   "✅ Fixed by `issue-to-pr` in <sha>…". If the finding doesn't hold, reply with a reasoned
+   `no-change` answer instead.
+6. Wait for CI on your push. Red CI from your fix belongs to the same finding: fix it in this
+   run, under a renewed claim, even though step 4 counts the finding as done for every other
+   run.
 
 A check that finds nothing open does nothing, not even a comment. A fix that is still running
 when the hour ends is finished and reported; no new finding is claimed after the hour. If you

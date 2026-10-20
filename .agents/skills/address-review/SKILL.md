@@ -23,7 +23,25 @@ print secrets, and don't touch `.github/workflows`, `.air/` or the network polic
 comment says so. Keep comment text out of shell quotes: write replies to a file and post them
 with `-F body=@reply.md`.
 
-## 1. Findings, claims and results
+## 1. The verdict first
+
+Before anything else, read the reviewer's latest review of the PR's **current head commit**:
+
+```sh
+BOT='jetbrains-air[bot]'
+head=$(gh pr view <pr> --json headRefOid --jq .headRefOid)
+gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
+  --jq ".[] | select(.commit_id == \"$head\" and .user.login == \"$BOT\" and .body != \"\") | {state, body}" \
+  | tail -n 1
+```
+
+If it says there is nothing left to fix (`state` is `APPROVED`, or the summary's first line
+starts with `Verdict: approve` and it counts `0 blockers, 0 majors, 0 minors`), **stop here**: no claims, no
+comments, no commits, no changes. Say so in your last message, and that's the whole run.
+
+If there is no review of the head yet, or it lists findings, go on.
+
+## 2. Findings, claims and results
 
 The reviewer and the agents post as one account, `jetbrains-air[bot]`. **The login says that
 a comment comes from the automation; the marker in it says which agent wrote it.** Only that
@@ -37,15 +55,13 @@ ignored.
   `<!-- skill-done: <skill> <commit|no-change> -->`
 
 ```sh
-BOT='jetbrains-air[bot]'
-
 # The findings: id, URL, file, line. "The finding URL" is always this html_url.
 gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
   --jq ".[] | select(.in_reply_to_id == null and .user.login == \"$BOT\") | \"\(.id) \(.html_url) \(.path):\(.line // .original_line)\""
 
-# The markers in the thread of finding <id>, oldest first: time, kind, skill
+# The markers in the thread of finding <id>, oldest first: comment id, time, kind, skill
 gh api --paginate repos/{owner}/{repo}/pulls/<pr>/comments \
-  --jq ".[] | select(.in_reply_to_id == <id> and .user.login == \"$BOT\") | .created_at + \" \" +
+  --jq ".[] | select(.in_reply_to_id == <id> and .user.login == \"$BOT\") | \"\(.id) \(.created_at) \" +
        (.body | capture(\"^<!-- skill-(?<kind>claim|done): (?<skill>[a-z0-9-]+)\") | .kind + \" \" + .skill)"
 ```
 
@@ -64,21 +80,26 @@ to fix it. If you can't tell, ask in the thread instead of claiming it.
 Otherwise, from the markers, a finding is:
 
 - **done** if it has a result, or if the branch already has a fix for it. A fix can be pushed
-  a moment before its result is posted, so the branch counts too. Every fix commit carries two
-  lines (§4): `Review: <finding URL>` and `Skill: <skill>`. If the reviewer still disagrees,
+  a moment before its result is posted, so the branch counts too. Every fix commit carries
+  three lines (§5): `Review: <finding URL>`, `Skill: <skill>` and `Claim: <claim id>`, the id
+  of the claim it was made under. If the reviewer still disagrees,
   it raises a new finding.
 
   ```sh
-  # The fix commits for this finding, and which skill made each one. "Review: <URL>" must be a
-  # whole line: anchored, so a longer discussion id doesn't match; dots escaped, so they are dots.
+  # The fix commits for this finding, with the skill and the claim each was made under.
+  # "Review: <URL>" must be a whole line: anchored, so a longer discussion id doesn't match;
+  # dots escaped, so they are dots.
   url='<finding URL>'
   git fetch origin
   git log --format=%h origin/<headRefName> --grep="^Review: $(printf '%s' "$url" | sed 's/[][\.*^$]/\\&/g')\$" \
-    | while read -r sha; do echo "$sha $(git show -s --format=%B "$sha" | sed -n 's/^Skill: //p' | head -n 1)"; done
+    | while read -r sha; do msg=$(git show -s --format=%B "$sha")
+        echo "$sha $(sed -n 's/^Skill: //p' <<<"$msg" | head -n 1) claim=$(sed -n 's/^Claim: //p' <<<"$msg" | head -n 1)"; done
   ```
-- **taken** if its earliest *live* claim is another skill's. Leave it alone: that agent is
-  working on it.
-- **yours** if its earliest live claim is yours.
+- **yours** if its earliest live claim is one that **this run** posted: remember the id each
+  claim POST returns (`--jq .id`). The skill name doesn't decide it, since two runs of the same
+  skill sign the same way.
+- **taken** if its earliest live claim is anyone else's: another skill's, or another run of
+  your own skill. Leave it alone: that agent is working on it.
 - **open** if it has no live claim.
 
 A claim is **live** for one hour. A claim older than that with no result means its agent
@@ -89,7 +110,7 @@ The review summary is not a place for findings: code-review puts each one inline
 nearest changed line when the problem is elsewhere. If a summary still lists a finding that
 has no inline comment, nobody can claim it. Say so in a PR comment for a human, once.
 
-## 2. Get the branch
+## 3. Get the branch
 
 ```sh
 gh pr view <pr> --json headRefName,isCrossRepository,state
@@ -100,7 +121,7 @@ npm ci
 Work only on an **open** PR whose branch is in this repository (`isCrossRepository: false`).
 Never push to a fork.
 
-## 3. Before each claim
+## 4. Before each claim
 
 **Listen to humans first.** Read the PR's comments and reviews by the repository's people
 (`author_association` OWNER, MEMBER or COLLABORATOR), and stop if one asks the agents to stop,
@@ -128,17 +149,19 @@ gh api --paginate repos/{owner}/{repo}/pulls/<pr>/reviews \
    gh api repos/{owner}/{repo}/pulls/<pr>/comments/<id>/replies -X POST -F body=@claim.md --jq .id
    ```
 
-2. **Check that you won.** Wait a few seconds and read the markers again. If the earliest live
-   claim isn't yours, another agent claimed it at the same moment. Delete your claim and move
-   on:
+   Keep that id: it is what makes the claim yours.
+
+2. **Check that you won.** Wait a few seconds and read the thread again. If the earliest live
+   claim isn't the one with your id, another agent claimed it at the same moment. Delete your
+   claim and move on:
 
    ```sh
    gh api repos/{owner}/{repo}/pulls/comments/<your claim id> -X DELETE
    ```
 
-Finish one finding (§4) before claiming the next, so that no claim sits idle.
+Finish one finding (§5) before claiming the next, so that no claim sits idle.
 
-## 4. Fix it
+## 5. Fix it
 
 1. **Reproduce** the finding. If it doesn't hold, don't change code: answer instead (step 4).
 2. **Fix it** the way the surrounding code is written. If it is about behaviour, add or extend
@@ -148,13 +171,19 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
 
    ```sh
    npm run typecheck && npm test && ./skill-atlas help && ./skill-atlas scan ./fixture
-   git commit -m "<what the fix does>" -m "Review: <finding URL>" -m "Skill: address-review"
+   git commit -m "<what the fix does>" -m "Review: <finding URL>" -m "Skill: <your skill name>" -m "Claim: <your claim id>"
    ```
 
-   Here *still yours* means: your claim is the earliest live one, the thread has no result
-   **by another skill**, and `origin/<headRefName>` has no fix commit for this finding **by
-   another skill** (the `git log` of §1 prints each one's `Skill:`). Your own earlier result
-   and commit don't count against you: they are what a follow-up fix builds on.
+   Here *still yours* means, all of this **run**'s doing, whatever the skill names say:
+
+   - the earliest live claim in the thread is one of this run's claim ids
+   - the thread has no result except the ones this run posted
+   - `origin/<headRefName>` has no fix commit for this finding except this run's: the shas it
+     pushed, whose `Claim:` is one of its claim ids (the `git log` of §2). The `Skill:` column
+     is for people, not for this check
+
+   So this run's own earlier fix doesn't count against it (a follow-up builds on it), while a
+   fix by anyone else, another run of the same skill included, does.
 
    1. **Check it is still yours.** Otherwise *give it up* (below).
    2. **Rebase**: `git pull --rebase origin <headRefName>`. On a conflict, check again: if it
@@ -190,11 +219,12 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
    `skill-claim` reply saying what is left.
 
 Then wait for CI on your commit (`gh pr checks <pr> --watch`). If it goes red because of your
-fix, fix it under a renewed claim and report again. The finding is *done* for the other
-agents, but not for you: a follow-up for your own fix is still yours.
+fix, fix it in the same run, under a renewed claim, and report again. The finding is *done*
+for every other run, but not for this one: a follow-up for its own fix is still its own.
 
-## 5. Finish
+## 6. Finish
 
-When no open finding is left, stop. Summarize in your last message (not on the PR): which
+When no open finding is left, or the reviewer's verdict on the head says nothing is left
+(§1), stop. Summarize in your last message (not on the PR): which
 findings you fixed, and with which commits; which you answered; which other skills had taken.
 Leave the PR open for the reviewer's next round and for a human to merge.
