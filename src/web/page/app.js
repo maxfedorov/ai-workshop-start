@@ -3,7 +3,7 @@
 // The address holds the state (?source=…&skill=…&q=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
 import { addressOf, readAddress } from './address.js';
-import { filterSkills, marked, parseFilter } from './filter.js';
+import { filterRepositories, filterSkills, marked, parseFilter } from './filter.js';
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
 
@@ -239,15 +239,11 @@ function count(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/**
- * The organization's repositories that the filter leaves, the ones with skills first, each a link
- * to its scan. The skills' filter, with a repository's name as its name and `owner/name` as its path.
- */
+/** The organization's repositories that the filter leaves, the ones with skills first, each a link to its scan. */
 function renderRepositories() {
   const terms = parseFilter(page.filter.value);
   const { repositories } = result;
-  const fields = repositories.map((repository) => ({ repository, name: repository.id.split('/')[1], description: '', path: repository.id }));
-  visible = filterSkills(fields, terms).map((field) => field.repository);
+  visible = filterRepositories(repositories, terms);
   const withSkills = repositories.filter((repository) => repository.skills > 0).length;
   page.count.textContent = terms.length
     ? `${visible.length} of ${count(repositories.length, 'repository', 'repositories')}`

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { test, type TestContext } from 'node:test';
 import { addressOf, readAddress } from '../src/web/page/address.js';
-import { filterSkills, marked, parseFilter } from '../src/web/page/filter.js';
+import { filterRepositories, filterSkills, marked, parseFilter } from '../src/web/page/filter.js';
 import { createWebServer } from '../src/web/server.ts';
 import { FIXTURE, open } from './helpers.ts';
 
@@ -109,4 +109,29 @@ test('the page sends its filter and address modules', async (t) => {
     assert.match(response.headers.get('content-type') ?? '', /^text\/javascript/);
   }
   assert.match(await (await fetch(`${base}/app.js`)).text(), /from '\.\/filter\.js'/);
+});
+
+type Repository = { id: string; skills: number };
+
+/** The recorded organization JetBrains, from the real server's /api/scan. */
+async function organizationRepositories(t: TestContext): Promise<Repository[]> {
+  const web = createWebServer({ open });
+  await new Promise<void>((resolve) => web.listen(0, '127.0.0.1', resolve));
+  t.after(() => web.close());
+  const response = await fetch(`http://127.0.0.1:${(web.address() as AddressInfo).port}/api/scan?source=https://github.com/JetBrains`);
+  return ((await response.json()) as { repositories: Repository[] }).repositories;
+}
+
+test("the organization's filter: the name as name:, owner/name as path:; the ones with skills still first", async (t) => {
+  const repositories = await organizationRepositories(t);
+  const ids = (text: string) => filterRepositories(repositories, parseFilter(text)).map((repository: Repository) => repository.id);
+  assert.deepEqual(ids(''), ['JetBrains/twins', 'JetBrains/example', 'JetBrains/docs-only', 'JetBrains/empty']);
+  // "e" is in every path (JetBrains): the ones with skills stay first, empty (no skills) after twins;
+  // within each, the names with an "e" first.
+  assert.deepEqual(ids('e'), ['JetBrains/example', 'JetBrains/twins', 'JetBrains/empty', 'JetBrains/docs-only']);
+  assert.deepEqual(ids('name:e'), ['JetBrains/example', 'JetBrains/empty']);
+  assert.deepEqual(ids('name:jetbrains'), []);
+  assert.deepEqual(ids('path:jetbrains/t'), ['JetBrains/twins']);
+  assert.deepEqual(ids('-"docs-only" -empty'), ['JetBrains/twins', 'JetBrains/example']);
+  assert.deepEqual(ids('description:docs'), []);
 });

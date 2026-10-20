@@ -8,7 +8,8 @@ A local page over the same scan; *nothing is stored*.
 - Another repository: scanned from the page
 - An **organization**: how many repositories, how many with skills; each repository and its
   number of skills, *the ones with skills first*, filtered as you type: the [Filter](#filter),
-  with the repository's name as its name and `owner/name` as its path
+  with the repository's name as its name and `owner/name` as its path; with a filter, the ones
+  with skills *still* come first, and within each, those whose name has every word
 - A repository chosen from the organization → its skills; its header leads back to the
   organization, and *Back* returns to it *without scanning it again*
 - The URL holds the source, the skill and the filter: links, reloads and *Back* work

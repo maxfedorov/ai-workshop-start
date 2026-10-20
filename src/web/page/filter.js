@@ -29,6 +29,17 @@ export function filterSkills(skills, terms) {
   return [...first, ...left.filter((skill) => !first.includes(skill))];
 }
 
+/**
+ * An organization's repositories that every term leaves, filtered as skills are, with the
+ * repository's name as its name and `owner/name` as its path. Those with skills stay first;
+ * within each, those whose name has every word first.
+ */
+export function filterRepositories(repositories, terms) {
+  const fields = repositories.map((repository) => ({ repository, name: repository.id.split('/')[1], description: '', path: repository.id }));
+  const left = filterSkills(fields, terms).map((field) => field.repository);
+  return [...left.filter((repository) => repository.skills > 0), ...left.filter((repository) => repository.skills === 0)];
+}
+
 /** What to mark in a field: the words searched in it, never the exclusions. */
 export function marked(terms, field) {
   return terms.filter((term) => !term.exclude && (!term.field || term.field === field)).map((term) => term.text);
