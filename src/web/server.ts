@@ -6,12 +6,12 @@ import type { AddressInfo } from 'node:net';
 import { AtlasError } from '../core/errors.ts';
 import { firstSentence, skillLink } from '../core/model.ts';
 import { parseSkill } from '../core/parse.ts';
-import { scan, type ScanResult, type Source } from '../core/scan.ts';
+import { isOrganization, scan, scanOrganization, type OrganizationSource, type ScanResult, type Source } from '../core/scan.ts';
 import { renderMarkdown } from './markdown.ts';
 
 export type WebOptions = {
-  /** Opens what the page asked to scan, as the CLI does. */
-  open(input: string): Promise<Source>;
+  /** Opens what the page asked to scan, as the CLI does: a repository, or an organization. */
+  open(input: string): Promise<Source | OrganizationSource>;
   /** Scanned when the page names no source. */
   source?: string;
 };
@@ -73,7 +73,10 @@ async function scanAnswer(requested: string | null, options: WebOptions): Promis
   const source = requested?.trim() || options.source;
   if (!source) return [400, json({ source: '', error: 'Enter a GitHub URL or a directory to scan' })];
   try {
-    return [200, json(view(source, await scan(await options.open(source))))];
+    const opened = await options.open(source);
+    // An organization is shown as it is scanned: its repositories and their numbers of skills.
+    if (isOrganization(opened)) return [200, json({ source, ...(await scanOrganization(opened)) })];
+    return [200, json(view(source, await scan(opened)))];
   } catch (error) {
     if (!(error instanceof AtlasError)) throw error;
     return [422, json({ source, error: error.message })];

@@ -1,6 +1,6 @@
 import { AtlasError } from './errors.ts';
 import { SKILL_ROOTS } from './find.ts';
-import type { Source } from './scan.ts';
+import type { OrganizationSource, Source } from './scan.ts';
 
 /** The part of `fetch` the core uses, so tests and the browser can pass their own. */
 export type Fetch = (url: string, init?: { headers?: Record<string, string> }) => Promise<Response>;
@@ -25,14 +25,27 @@ export async function openGitHub(input: string, options: GitHubOptions): Promise
   const name = parseGitHubUrl(input);
   if (!name) throw new AtlasError(`Not a GitHub repository URL: ${input}`);
   const github = client(options);
-  const info = await github.json<{ full_name: string; default_branch: string }>(
+  const info = await github.json<RepositoryInfo>(
     `${API}/repos/${name.owner}/${name.repo}`,
     `Repository not found: https://github.com/${name.owner}/${name.repo}`,
   );
+  return repositorySource(github, info, (sha, warnings) =>
+    options.token ? searchPaths(github, info.full_name) : treePaths(github, info.full_name, sha, warnings),
+  );
+}
+
+type RepositoryInfo = { full_name: string; default_branch: string };
+
+/** The repository at its default branch's commit, with the files `list` finds there. */
+async function repositorySource(
+  github: Client,
+  info: RepositoryInfo,
+  list: (sha: string, warnings: string[]) => Promise<string[]>,
+): Promise<Source> {
   const id = info.full_name;
   const { sha } = await github.json<{ sha: string }>(`${API}/repos/${id}/commits/${encodePath(info.default_branch)}`);
   const warnings: string[] = [];
-  const paths = options.token ? await searchPaths(github, id) : await treePaths(github, id, sha, warnings);
+  const paths = await list(sha, warnings);
   const [organization, repo] = id.split('/');
   return {
     repository: { id, organization, name: repo, url: `https://github.com/${id}`, commit: sha },
@@ -40,6 +53,76 @@ export async function openGitHub(input: string, options: GitHubOptions): Promise
     warnings,
     read: (path) => github.raw(`${RAW}/${id}/${sha}/${encodePath(path)}`),
   };
+}
+
+/** `https://github.com/owner`, with or without the scheme or a trailing slash. */
+export function parseGitHubOrganizationUrl(input: string): { owner: string } | undefined {
+  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/?$/i.exec(input.trim());
+  return match ? { owner: match[1] } : undefined;
+}
+
+/**
+ * Lists every repository of an organization or a user, and finds the files that may be skills
+ * with one code search over all of them: one search per repository would hit its rate limit.
+ */
+export async function openGitHubOrganization(input: string, options: GitHubOptions): Promise<OrganizationSource> {
+  const name = parseGitHubOrganizationUrl(input);
+  if (!name) throw new AtlasError(`Not a GitHub organization URL: ${input}`);
+  if (!options.token) throw new AtlasError('Scanning an organization needs GITHUB_TOKEN: GitHub code search finds its skills');
+  const github = client(options);
+  const owner = await github.json<{ login: string; type: string; html_url: string }>(
+    `${API}/users/${name.owner}`,
+    `Organization not found: https://github.com/${name.owner}`,
+  );
+  const isOrganization = owner.type === 'Organization';
+  // Forks are left out: code search does not look in them, and their skills are their upstream's.
+  const listed = await pages<RepositoryInfo & { fork: boolean }>(github, `${API}/${isOrganization ? 'orgs' : 'users'}/${owner.login}/repos?per_page=100`);
+  const warnings: string[] = [];
+  const found = await searchOwnerPaths(github, `${isOrganization ? 'org' : 'user'}:${owner.login}`, warnings);
+  return {
+    organization: { id: owner.login, url: `https://github.com/${owner.login}` },
+    repositories: listed.filter((info) => !info.fork).map((info) => {
+      const paths = found.get(info.full_name) ?? [];
+      return {
+        id: info.full_name,
+        url: `https://github.com/${info.full_name}`,
+        paths,
+        open: () => repositorySource(github, info, async () => paths),
+      };
+    }),
+    warnings,
+  };
+}
+
+/** Every page of a GitHub list, 100 items a page, until a page comes back shorter. */
+async function pages<T>(github: Client, url: string): Promise<T[]> {
+  const items: T[] = [];
+  for (let page = 1; ; page++) {
+    const answer = await github.json<T[]>(`${url}&page=${page}`);
+    items.push(...answer);
+    if (answer.length < 100) return items;
+  }
+}
+
+/** The files named SKILL.md in the owner's repositories, by repository. Code search leaves forks out. */
+async function searchOwnerPaths(github: Client, qualifier: string, warnings: string[]): Promise<Map<string, string[]>> {
+  const found = new Map<string, Set<string>>(); // pages can repeat a result
+  let total = 0;
+  // GitHub returns at most 1000 results: ten pages.
+  for (let page = 1; page <= 10; page++) {
+    const result = await github.json<{ total_count: number; items: { path: string; repository: { full_name: string } }[] }>(
+      `${API}/search/code?q=filename:SKILL.md+${qualifier}&per_page=100&page=${page}`,
+    );
+    for (const item of result.items) {
+      const id = item.repository.full_name;
+      found.set(id, (found.get(id) ?? new Set()).add(item.path));
+    }
+    total = result.total_count;
+    if (result.items.length < 100 || page * 100 >= total) break;
+  }
+  // Also when a page came back short first: the search said there are more than it can return.
+  if (total > 1000) warnings.push(`code search found ${total} SKILL.md files and returns only the first 1000; some skills may be missing`);
+  return new Map([...found].map(([id, paths]) => [id, [...paths]]));
 }
 
 /** Code search looks at the whole default branch, 100 results a page. */

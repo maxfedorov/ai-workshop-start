@@ -133,7 +133,7 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
 
 @media (prefers-reduced-motion: reduce) {
   .stars, .comet, .orbit, .orbit .moon, .hero-planet, .brand-flame { animation: none !important; }
-  .brand-mark { transition: none !important; }
+  .brand-mark, .repository-card { transition: none !important; }
   .comet { display: none; }
 }
 
@@ -647,6 +647,28 @@ mark { color: #fff; background: rgba(240, 171, 252, 0.3); border-radius: 3px; pa
   pointer-events: none;
 }
 .toast.shown { opacity: 1; transform: translate(-50%, 0); }
+
+/* An organization: its repositories with skills, each a link to its scan */
+
+span.commit { cursor: default; }
+.repo-parent { color: var(--muted); font-weight: 600; }
+.repo-parent:hover { color: var(--text); }
+.repositories { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.repository-card {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-raised);
+  color: var(--text);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.repository-card:hover { text-decoration: none; color: #fff; border-color: var(--accent); box-shadow: var(--glow); }
+.repository-name { font-weight: 600; word-break: break-word; }
+.repository-count { flex: none; font: 12px var(--mono); color: var(--comet); }
 
 /* Narrow screens: the list, or the skill */
 

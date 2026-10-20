@@ -10,6 +10,22 @@ export type Repository = {
   commit: string;
 };
 
+/** A scanned GitHub organization, or a user: the owner of repositories. */
+export type Organization = {
+  /** The login, for example `JetBrains`. */
+  id: string;
+  /** `https://github.com/<owner>`. */
+  url: string;
+};
+
+/** One of an organization's repositories, and how many skills it has. */
+export type RepositorySummary = {
+  /** `owner/name`. */
+  id: string;
+  url: string;
+  skills: number;
+};
+
 /** One skill. Its link is derived, by `skillLink`. */
 export type Skill = {
   /** `repo:path`, for example `JetBrains/kotlin:.claude/skills/x/SKILL.md`. */
@@ -39,6 +55,12 @@ export function skillLink(repository: Repository, skill: Skill): string {
 export function sortSkills(skills: Skill[]): Skill[] {
   const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
   return [...skills].sort((a, b) => compare(a.name, b.name) || compare(a.path, b.path));
+}
+
+/** Most skills first, then by id: the same order everywhere, whatever the locale. */
+export function sortRepositories(repositories: RepositorySummary[]): RepositorySummary[] {
+  const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  return [...repositories].sort((a, b) => b.skills - a.skills || compare(a.id, b.id));
 }
 
 /** A description's first sentence, on one line: what a list shows of it. */

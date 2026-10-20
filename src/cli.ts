@@ -2,15 +2,19 @@
 // The Node client: a GitHub repository through the GitHub API, or a local directory; stdout and
 // stderr, or the web view. Nothing is stored.
 import { run } from './commands.ts';
-import { openGitHub, parseGitHubUrl } from './core/github.ts';
-import type { Source } from './core/scan.ts';
+import { openGitHub, openGitHubOrganization, parseGitHubOrganizationUrl, parseGitHubUrl } from './core/github.ts';
+import type { OrganizationSource, Source } from './core/scan.ts';
 import { openDirectory } from './local.ts';
 import { serve } from './web/server.ts';
 
 const token = process.env.GITHUB_TOKEN || undefined;
 
-const open = (input: string): Promise<Source> =>
-  parseGitHubUrl(input) ? openGitHub(input, { fetch, token }) : openDirectory(input);
+const open = (input: string): Promise<Source | OrganizationSource> =>
+  parseGitHubUrl(input)
+    ? openGitHub(input, { fetch, token })
+    : parseGitHubOrganizationUrl(input)
+      ? openGitHubOrganization(input, { fetch, token })
+      : openDirectory(input);
 
 process.exitCode = await run(process.argv.slice(2), {
   open,
