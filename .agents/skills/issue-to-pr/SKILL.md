@@ -43,8 +43,9 @@ Read [spec/](../../../spec/) and the code the feature touches. Then decide:
   mention it, such as "17/17":
 
   ```sh
-  gh issue view <n> --json closedByPullRequestsReferences \
-    --jq '.closedByPullRequestsReferences[] | select(.state == "OPEN") | .number'
+  # The linked PRs carry no state, so ask each one; prints the numbers of the open ones.
+  gh issue view <n> --json closedByPullRequestsReferences --jq '.closedByPullRequestsReferences[].url' \
+    | xargs -r -n1 gh pr view --json number,state --jq 'select(.state == "OPEN") | .number'
   ```
 
 ## 2. Branch
