@@ -132,20 +132,27 @@ Finish one finding (§4) before claiming the next, so that no claim sits idle.
 2. **Fix it** the way the surrounding code is written. If it is about behaviour, add or extend
    an integration test that fails without the fix. Update the spec if the behaviour the spec
    describes changes ([AGENTS.md](../../../AGENTS.md)).
-3. **Check everything**, then commit only this fix and push:
+3. **Check everything, commit only this fix, and push it**, in this order:
 
    ```sh
    npm run typecheck && npm test && ./skill-atlas help && ./skill-atlas scan ./fixture
    git commit -m "<what the fix does>" -m "Review: <finding URL>"
-   git pull --rebase origin <headRefName> && git push origin HEAD:<headRefName>
    ```
 
-   If the rebase brings someone else's commits, run the checks again before pushing.
+   1. **Read the markers.** Go on only if your claim is still the earliest live one and the
+      thread has no result yet. Otherwise *give it up* (below).
+   2. **Rebase**: `git pull --rebase origin <headRefName>`. On a conflict, read the markers
+      again: if another agent has fixed the finding, `git rebase --abort` and give it up. If
+      not, resolve the conflict, and if the rebase brought someone else's commits, run the
+      checks again.
+   3. **Read the markers once more**, then push: `git push origin HEAD:<headRefName>`.
 
-   **Just before `git push`, read the markers once more.** Push only if your claim is still
-   the earliest live one and the thread has no result yet. Otherwise don't push: drop your
-   change (`git reset --hard origin/<headRefName>`) and say in the thread why, "Gave this up
-   to `<skill>`, which took over" or "Already fixed in <sha>".
+   To *give it up*, leave the branch as it is on GitHub and say why in the thread, "Gave this
+   up to `<skill>`, which took over" or "Already fixed in <sha>":
+
+   ```sh
+   git rebase --abort 2>/dev/null; git reset --hard origin/<headRefName>
+   ```
 
    **Once you have pushed, always report the result** (step 4), even if your claim has run out
    in the meantime: the fix is on the branch, and the result is what tells the others.

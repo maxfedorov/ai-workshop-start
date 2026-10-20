@@ -173,7 +173,7 @@ signed with **your** skill name, `issue-to-pr`:
    That agent is fixing it.
 4. For each open finding, oldest first: claim it with `<!-- skill-claim: issue-to-pr -->` and
    "🛠 Taken by `issue-to-pr`…", and check that your claim is the earliest live one. Then fix
-   it, run every check, commit, check that your claim is still the earliest live one and nobody posted a result, push, and always reply after a push with `<!-- skill-done: issue-to-pr <sha> -->`
+   it, run every check, commit, and push in the order of address-review §4 step 3 (markers, rebase, markers, push), and always reply after a push with `<!-- skill-done: issue-to-pr <sha> -->`
    and "✅ Fixed by `issue-to-pr` in <sha>…", or with a reasoned `no-change` answer.
 5. Wait for CI on your push. Red CI from your fix belongs to the same finding.
 
