@@ -1,9 +1,11 @@
 // The Skill Atlas page: one scan from /api/scan, a filterable list of its skills and the selected
-// SKILL.md; or, for an organization, a filterable list of its repositories, each a link to its scan.
-// The address holds the state (?source=…&skill=…&q=…), so links, reloads and Back work.
+// SKILL.md, or the skills map in its place; or, for an organization, a filterable list of its
+// repositories, each a link to its scan.
+// The address holds the state (?source=…&skill=…&view=map&q=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
 import { addressOf, readAddress } from './address.js';
 import { filterRepositories, filterSkills, marked, parseFilter } from './filter.js';
+import { mapSkills } from './map.js';
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
 
@@ -47,8 +49,13 @@ function address() {
 }
 
 /** The address of a state; the filter, unless given, is the one being typed. */
-function href({ source, skill, filter = page.filter.value }) {
-  return addressOf(location.pathname, { source, skill, filter });
+function href({ source, skill, filter = page.filter.value, view }) {
+  return addressOf(location.pathname, { source, skill, filter, view });
+}
+
+/** Whether the skills map is on screen: only ever over a repository. */
+function mapView() {
+  return Boolean(result && !result.organization && address().view === 'map');
 }
 
 function go(state, { replace = false } = {}) {
@@ -65,6 +72,7 @@ async function sync() {
     if (!(await scan(source))) return;
   } else if (refiltered) renderList();
   if (result.organization) renderOrganization();
+  else if (mapView()) renderMap();
   else select(skill);
 }
 
@@ -99,7 +107,7 @@ async function scan(source) {
   selected = undefined;
   if (data.organization) organizations.set(data.source, data);
   page.source.value = data.source;
-  if (!address().source) history.replaceState(null, '', href({ source: data.source, skill: address().skill }));
+  if (!address().source) history.replaceState(null, '', href({ source: data.source, skill: address().skill, view: address().view }));
   document.title = `${(data.organization ?? data.repository).id} · Skill Atlas`;
   page.filter.placeholder = data.organization ? 'Filter repositories' : 'Filter skills';
   page.filter.setAttribute('aria-label', page.filter.placeholder);
@@ -166,6 +174,7 @@ function renderRepository() {
     local
       ? h('button', { class: 'commit', type: 'button', title: 'Copy the directory', onclick: () => copy(place, 'Directory copied') }, 'local')
       : h('a', { class: 'commit mono', href: `${repository.url}/tree/${repository.commit}`, target: '_blank', rel: 'noopener noreferrer', title: `Scanned at ${repository.commit}` }, repository.commit.slice(0, 7)),
+    h('a', { class: 'map-link', id: 'map-link', href: href({ source: result.source, view: 'map' }), title: 'The skills, grouped by the words their names share', onclick: openMap }, 'Skills map'),
   );
 }
 
@@ -303,10 +312,69 @@ function renderOrganization() {
   page.detail.scrollTop = 0;
 }
 
+// The skills map
+
+/** A plain click opens the map, keeping the filter; any other click is the browser's own. */
+function openMap(event) {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  document.body.dataset.view = 'detail';
+  if (!mapView()) go({ source: result.source, view: 'map' });
+}
+
+/** The skills the filter leaves, grouped by the words their names share, in place of the selected skill. */
+function renderMap() {
+  selected = undefined;
+  for (const item of page.list.querySelectorAll('.skill-item')) item.removeAttribute('aria-current');
+  $('map-link')?.setAttribute('aria-current', 'page');
+  if (result.skills.length === 0) {
+    page.detail.replaceChildren(h('div', { class: 'detail-empty' }, h('div', { class: 'hero-planet small', 'aria-hidden': 'true' }), h('p', {}, 'No skills were found in this repository.')));
+    return;
+  }
+  const { groups, alone } = mapSkills(visible);
+  const skillLink = (skill, word) => h('li', {},
+    h('a', {
+      class: 'map-skill',
+      href: href({ source: result.source, skill: skill.path }),
+      title: skill.summary || skill.path,
+      onclick: (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        choose(skill, { open: true });
+      },
+    }, word ? highlight(skill.name, [word]) : skill.name),
+  );
+  const heading = (title, skills) => h('h2', { class: 'map-word' }, h('span', {}, title), h('span', { class: 'map-count' }, count(skills.length, 'skill', 'skills')));
+  page.detail.replaceChildren(h('article', { class: 'skill skills-map' },
+    h('button', { class: 'back button ghost', type: 'button', onclick: () => { document.body.dataset.view = 'list'; page.filter.focus(); } }, '← All skills'),
+    h('header', { class: 'skill-head' },
+      h('p', { class: 'eyebrow mono' }, result.repository.id),
+      h('h1', { class: 'skill-title' }, 'Skills map'),
+      h('p', { class: 'skill-description' }, visible.length
+        ? `${count(visible.length, 'skill', 'skills')}: ${count(groups.length, 'group', 'groups')} by a word their names share, ${alone.length} on their own.`
+        : 'No skill matches the filter.'),
+    ),
+    groups.length
+      ? h('ul', { class: 'map-groups' }, groups.map((group) => h('li', { class: 'map-group' },
+        heading(group.word, group.skills),
+        h('ul', { class: 'map-skills' }, group.skills.map((skill) => skillLink(skill, group.word))),
+      )))
+      : visible.length ? h('p', { class: 'muted map-none' }, 'No two skills share a word in their names.') : null,
+    alone.length
+      ? h('section', { class: 'map-alone' },
+        heading('On their own', alone),
+        h('ul', { class: 'map-skills' }, alone.map((skill) => skillLink(skill))),
+      )
+      : null,
+  ));
+  page.detail.scrollTop = 0;
+}
+
 // The selected skill
 
 /** Selects a skill by path, or the first one; without a scan or skills, the empty view. */
 function select(path) {
+  $('map-link')?.removeAttribute('aria-current');
   const skill = result.skills.find((candidate) => candidate.path === path) ?? visible[0] ?? result.skills[0];
   if (!skill) {
     selected = undefined;
@@ -443,7 +511,8 @@ function move(step) {
   }
   const index = visible.indexOf(selected);
   const next = visible[Math.max(0, Math.min(visible.length - 1, index < 0 ? 0 : index + step))];
-  choose(next, { replace: true });
+  // Leaving the map keeps it in the history.
+  choose(next, { replace: !mapView() });
 }
 
 page.form.addEventListener('submit', (event) => {
@@ -461,9 +530,11 @@ page.form.addEventListener('submit', (event) => {
 page.filter.addEventListener('input', () => {
   if (!result) return;
   renderList();
-  if (!result.organization && visible.length && !visible.includes(selected)) choose(visible[0], { replace: true });
+  const map = mapView();
+  if (map) renderMap();
+  else if (!result.organization && visible.length && !visible.includes(selected)) choose(visible[0], { replace: true });
   // Typing keeps the filter in the address, without an entry per key.
-  history.replaceState(null, '', href({ source: result.source, skill: selected?.path }));
+  history.replaceState(null, '', href({ source: result.source, skill: selected?.path, view: map ? 'map' : '' }));
 });
 
 page.filter.addEventListener('keydown', (event) => {

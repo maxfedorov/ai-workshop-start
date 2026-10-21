@@ -1,5 +1,6 @@
 // The web view in a real browser, against ./fixture (see tests/e2e/README.md for how the
 // screenshots work). Each case is a moment from spec/web.md worth seeing, not just asserting.
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 test.use({ reducedMotion: 'reduce' });
@@ -33,4 +34,52 @@ test("opening a skill renders its SKILL.md", async ({ page }) => {
   await page.locator('#skill-list .skill-name', { hasText: 'code-style' }).click();
   await expect(page.locator('#detail')).toContainText('Code style');
   await expect(page.locator('#detail')).toHaveScreenshot('skill-detail.png');
+});
+
+// The skills map, over fixture/fixtures/skills-map: skills whose names share words.
+const SKILLS_MAP = fileURLToPath(new URL('../../fixture/fixtures/skills-map', import.meta.url));
+
+test("the repository's header opens the skills map: the skills grouped by the words their names share", async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent(SKILLS_MAP)}`);
+  await page.locator('#map-link').click();
+  await expect(page).toHaveURL(/[?&]view=map(&|$)/);
+  await expect(page.locator('#detail .skill-title')).toHaveText('Skills map');
+  await expect(page.locator('#detail .map-group .map-word > span:first-child')).toHaveText(['release', 'checklist', 'code', 'review']);
+  await expect(page.locator('#detail .map-alone .map-skill')).toHaveText(['commits']);
+  await expect(page.locator('#detail')).toHaveScreenshot('skills-map.png');
+});
+
+test('a skill chosen on the map opens its SKILL.md, and Back returns to the map', async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent(SKILLS_MAP)}&view=map`);
+  await page.locator('#detail .map-group', { hasText: 'release' }).locator('.map-skill', { hasText: 'release-notes' }).click();
+  await expect(page.locator('#detail .skill-title')).toHaveText('release-notes');
+  await expect(page).toHaveURL(/skill=\.claude%2Fskills%2Frelease-notes%2FSKILL\.md/);
+  await page.goBack();
+  await expect(page.locator('#detail .skill-title')).toHaveText('Skills map');
+});
+
+test('the map shows the skills the filter leaves, and a reload keeps both', async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent(SKILLS_MAP)}&view=map`);
+  await page.locator('#filter').fill('checklist');
+  await expect(page.locator('#detail .map-group .map-word > span:first-child')).toHaveText(['checklist']);
+  await expect(page.locator('#detail .map-alone')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('#filter')).toHaveValue('checklist');
+  await expect(page.locator('#detail .map-group .map-word > span:first-child')).toHaveText(['checklist']);
+  await expect(page.locator('#detail')).toHaveScreenshot('skills-map-filtered.png');
+
+  await page.locator('#filter').fill('no-such-skill');
+  await expect(page.locator('#detail .skill-description')).toHaveText('No skill matches the filter.');
+});
+
+test('names that share no word: every skill on its own', async ({ page }) => {
+  await page.locator('#map-link').click();
+  await expect(page.locator('#detail .map-none')).toHaveText('No two skills share a word in their names.');
+  await expect(page.locator('#detail .map-alone .map-skill')).toHaveText(['code-style', 'commits', 'release-checklist', 'writing-lint-checks']);
+});
+
+test('a repository without skills: the map says so', async ({ page }) => {
+  // Scanned on its own, skills-map/.claude has its SKILL.md files outside every SKILL_ROOTS.
+  await page.goto(`/?source=${encodeURIComponent(`${SKILLS_MAP}/.claude`)}&view=map`);
+  await expect(page.locator('#detail .detail-empty')).toHaveText('No skills were found in this repository.');
 });
