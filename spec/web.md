@@ -13,6 +13,9 @@ A local page over the same scan; *nothing is stored*.
   with skills *still* come first, and within each, those whose name has every word
 - A repository chosen from the organization → its skills; its header leads back to the
   organization, and *Back* returns to it *without scanning it again*
+- **Scanning** → "Charting skills…" and the source, if there is one; *nothing else*
+- A scan that **fails** → "Lost in space", its *message*, the source unless the message names it,
+  *Try again* if there is a source, and *Scan something else*; *nothing else*
 - The URL holds the source, the skill, the filter and the map: links, reloads and *Back* work
 - Keyboard: `/` filters, `↑` `↓` choose, `Esc` clears the filter
 ## Filter

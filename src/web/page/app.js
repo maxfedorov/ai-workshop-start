@@ -126,7 +126,8 @@ function showState(state, source, message) {
     page.state.replaceChildren(
       h('div', { class: 'orbit', 'aria-hidden': 'true' }, h('span', { class: 'planet' }), h('span', { class: 'moon' })),
       h('p', { class: 'state-title' }, 'Charting skills…'),
-      source ? h('p', { class: 'state-text mono' }, source) : null,
+      // replaceChildren, unlike h, would show a null as text.
+      ...(source ? [h('p', { class: 'state-text mono' }, source)] : []),
     );
   } else if (state === 'welcome') {
     page.state.replaceChildren(
@@ -143,7 +144,7 @@ function showState(state, source, message) {
       h('div', { class: 'error-mark', 'aria-hidden': 'true' }, '✦'),
       h('p', { class: 'state-title' }, 'Lost in space'),
       h('p', { class: 'state-text' }, message),
-      source && !message.includes(source) ? h('p', { class: 'state-text mono muted' }, source) : null,
+      ...(source && !message.includes(source) ? [h('p', { class: 'state-text mono muted' }, source)] : []),
       h('div', { class: 'examples' },
         source ? h('button', { class: 'button primary', type: 'button', onclick: () => { result = undefined; sync(); } }, 'Try again') : null,
         h('button', { class: 'button', type: 'button', onclick: () => { page.source.select(); page.source.focus(); } }, 'Scan something else'),
