@@ -179,6 +179,10 @@ gh pr create --base main --title '<what it adds, in your own words>' --body-file
 
 The title is yours, not copied from the issue, and in single quotes.
 
+Once it's created, post its URL with your Slack tool in the same **air-test-mfedorov** channel
+(id `C0CAFST6MQF`, **AI Workshop at JetBrains** workspace) used for §1a's clarifications — the
+same thread there if this run asked one, otherwise a new message.
+
 `pr.md`:
 
 ```markdown
