@@ -92,3 +92,33 @@ test('a repository without skills: the map says so', async ({ page }) => {
   await page.goto(`/?source=${encodeURIComponent(`${SKILLS_MAP}/.claude`)}&view=map`);
   await expect(page.locator('#detail .detail-empty')).toHaveText('No skills were found in this repository.');
 });
+
+test('an organization has no map: ?view=map shows the organization', async ({ page }) => {
+  // The organization's JSON, as /api/scan answers it (see tests/organization.test.ts), without GitHub.
+  await page.route('**/api/scan?*', (route) => route.fulfill({
+    json: {
+      source: 'https://github.com/JetBrains',
+      organization: { id: 'JetBrains', url: 'https://github.com/JetBrains' },
+      repositories: [
+        { id: 'JetBrains/twins', url: 'https://github.com/JetBrains/twins', skills: 2 },
+        { id: 'JetBrains/empty', url: 'https://github.com/JetBrains/empty', skills: 0 },
+      ],
+      warnings: [],
+    },
+  }));
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`/?source=${encodeURIComponent('https://github.com/JetBrains')}&view=map`);
+  await expect(page.locator('#detail .eyebrow')).toHaveText('Organization');
+  await expect(page.locator('#detail .skill-title')).toHaveText('JetBrains');
+  await expect(page.locator('#map-link')).toHaveCount(0);
+  await expect(page.locator('#detail .map-group')).toHaveCount(0);
+
+  await page.locator('#filter').fill('twins');
+  await expect(page.locator('#count')).toHaveText('1 of 2 repositories');
+  await expect(page.locator('#detail .skill-title')).toHaveText('JetBrains');
+  // Typing keeps the organization's address, which has no map.
+  await expect(page).toHaveURL(/[?&]q=twins$/);
+  await expect(page).not.toHaveURL(/view=map/);
+  expect(errors).toEqual([]);
+});
