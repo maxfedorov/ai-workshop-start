@@ -28,6 +28,8 @@ Only a `SKILL.md` under one of `SKILL_ROOTS` — `.agents/skills`, `.claude/skil
   - A drifted copy's own byte-identical copies → drifted copies too, each listed
   - Byte-identical files are at *every* place one of them is: `.agents/skills/x` = `module/.agents/skills/x`,
     and `module/.claude/skills/x` different → *one* skill, the last one drifted
+  - So are copies under *another* directory name: `.agents/skills/x` = `.agents/skills/y`, and
+    `.claude/skills/y` different → *one* skill, `x`, with `.claude/skills/y` drifted
 - **Shipped with the product**, under a `src` ancestor (it ends up in the built artifact,
   not in the repository's own skills) → not counted, even when it is not a duplicate
 - **Test data**, under a `test`, `tests`, `fixture` or `fixtures` ancestor (for example

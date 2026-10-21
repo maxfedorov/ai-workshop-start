@@ -128,6 +128,23 @@ test('a drifted pair in a module, one of them byte-identical to a copy elsewhere
   assert.equal(scanned.stderr, 'warning: .agents/skills/x/SKILL.md: drifted from module/.claude/skills/x/SKILL.md');
 });
 
+test('a byte-identical copy under another directory name joins its place: that place drifted from the first path', async (t) => {
+  const root = directory(t, {
+    '.agents/skills/x/SKILL.md': '---\nname: x\ndescription: A\n---\nbody\n',
+    '.agents/skills/y/SKILL.md': '---\nname: x\ndescription: A\n---\nbody\n',
+    '.claude/skills/y/SKILL.md': '---\nname: y\ndescription: B\n---\nbody\n',
+  });
+  const scanned = await atlas(['scan', root]);
+  assert.equal(scanned.code, 0, scanned.stderr);
+  assert.deepEqual(scanned.stdout.split('\n').filter((line) => !line.startsWith('  file:')), [
+    `${scanned.stdout.split(' · ')[0]} · 1 skill`,
+    'x — A',
+    '  also in .agents/skills/y/SKILL.md',
+    '  drifted: .claude/skills/y/SKILL.md (name differs; description differs)',
+  ]);
+  assert.equal(scanned.stderr, 'warning: .agents/skills/x/SKILL.md: drifted from .claude/skills/y/SKILL.md');
+});
+
 const DRIFT_COMMIT = '0c1d2e3f405162738495a6b7c8d9e0f1a2b3c4d5';
 
 /** JetBrains/drift: commits in .agents and .claude, edited apart. */
