@@ -4,7 +4,7 @@
 // The address holds the state (?source=…&skill=…&view=map&q=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
 import { addressOf, readAddress } from './address.js';
-import { filterRepositories, filterSkills, marked, parseFilter } from './filter.js';
+import { filterRepositories, filterSkills, marked, markParts, parseFilter } from './filter.js';
 import { mapSkills, nameParts } from './map.js';
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
@@ -280,9 +280,7 @@ function renderRepositories() {
 
 /** The text with the filter's words marked. */
 function highlight(text, words) {
-  if (words.length === 0) return text;
-  const pattern = new RegExp(`(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-  return text.split(pattern).map((part, index) => (index % 2 ? h('mark', {}, part) : part));
+  return markParts(text, words).map((part, index) => (index % 2 ? h('mark', {}, part) : part));
 }
 
 // The organization

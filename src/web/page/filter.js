@@ -44,3 +44,12 @@ export function filterRepositories(repositories, terms) {
 export function marked(terms, field) {
   return terms.filter((term) => !term.exclude && (!term.field || term.field === field)).map((term) => term.text);
 }
+
+/** The text split at the words, the matches at the odd indexes; where one word starts another, the
+ * longer one wins. Case is ignored. */
+export function markParts(text, words) {
+  if (words.length === 0) return [text];
+  const longest = [...words].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(${longest.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  return text.split(pattern);
+}

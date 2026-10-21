@@ -4,11 +4,11 @@ import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
 import { test, type TestContext } from 'node:test';
 import { addressOf, readAddress } from '../src/web/page/address.js';
-import { filterRepositories, filterSkills, marked, parseFilter } from '../src/web/page/filter.js';
+import { filterRepositories, filterSkills, marked, markParts, parseFilter } from '../src/web/page/filter.js';
 import { createWebServer } from '../src/web/server.ts';
 import { FIXTURE, open } from './helpers.ts';
 
-type Skill = { name: string; description: string; path: string };
+type Skill = { name: string; description: string; summary: string; path: string };
 
 /** The fixture's skills, from the real server's /api/scan. */
 async function fixtureSkills(t: TestContext): Promise<Skill[]> {
@@ -86,6 +86,21 @@ test('the filter: matches are marked only in the fields they were searched in, e
   assert.deepEqual(marked(terms, 'name'), ['commit', 'lint check']);
   assert.deepEqual(marked(terms, 'description'), ['lint check']);
   assert.deepEqual(marked(terms, 'path'), ['lint check', '.agents']);
+});
+
+test('the filter: a word that starts another → the longer one is marked whole, in either order', async (t) => {
+  /** The field with its marks in [brackets], as the page marks them. */
+  const shown = (text: string, filter: string) => markParts(text, marked(parseFilter(filter), 'name')).map((part: string, index: number) => (index % 2 ? `[${part}]` : part)).join('');
+  const codeStyle = (await fixtureSkills(t)).find((skill) => skill.name === 'code-style')!;
+  for (const filter of ['co code', 'code co']) {
+    assert.deepEqual(filterSkills([codeStyle], parseFilter(filter)), [codeStyle]);
+    assert.equal(shown(codeStyle.name, filter), '[code]-style');
+    assert.equal(shown(codeStyle.summary, filter), "Follow the project's [code] style.");
+    assert.equal(shown(codeStyle.path, filter), '.github/skills/[code]-style/SKILL.md');
+  }
+  assert.equal(shown('Code, co-op', 'co code'), '[Code], [co]-op');
+  assert.equal(shown('a.b', '.'), 'a[.]b');
+  assert.equal(shown('code', ''), 'code');
 });
 
 test('the filter in the URL: ?q=…, next to the source and the skill', () => {
