@@ -158,3 +158,15 @@ List what you filed: each issue's URL and title, one line each. For anything tha
 but turned out not to be a bug (flaky once, or already fixed on `main`), say so in one line too,
 so it isn't re-investigated next run. Confirm each filed issue's Slack post went out, or say why
 not.
+
+Posting a summary of this run to Slack is **mandatory**, even when no bugs were found — the same
+**air-test-mfedorov** channel (id `C0CAFST6MQF`, **AI Workshop at JetBrains** workspace) used
+throughout this skill and [issue-to-pr](../issue-to-pr/SKILL.md). One message, posted once §6 is
+done, covering: what §0 scope this run covered, how many bugs were filed (with their issue links,
+if §5 already posted those separately, a short recap is enough here) or that none were found, and
+anything noted as "looked wrong but wasn't a bug." Post it with the `SLACK_BOT_TOKEN` in your
+environment.
+
+If you can't post it, don't just end the run silently: say so in your report, with the reason —
+and if the reason is the token, say plainly whether `SLACK_BOT_TOKEN` is even visible to you (set
+and non-empty, or missing) rather than guessing at the cause.
