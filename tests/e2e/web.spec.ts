@@ -337,6 +337,38 @@ test.describe('holding Scan with a finger', () => {
     };
   }
 
+  test('held 3 seconds → the link opens in a new tab when the finger lifts; the page stays, unscanned', async ({ page, baseURL }) => {
+    const link = `${baseURL}/?source=${encodeURIComponent(SKILLS_MAP)}`;
+    const tabs: import('@playwright/test').Page[] = [];
+    page.context().on('page', (tab) => tabs.push(tab));
+    await page.locator('#source').fill(link);
+    const before = page.url();
+    const scans = scansFrom(page);
+    const touch = await finger(page);
+    await touch.down();
+    await page.waitForTimeout(HOLD + 300);
+    // A finger's tab waits for it to lift: only then may the page open one.
+    expect(tabs).toEqual([]);
+    const opened = page.context().waitForEvent('page');
+    await touch.up();
+    const tab = await opened;
+    await tab.waitForLoadState();
+    expect(tab.url()).toBe(link);
+    await page.waitForTimeout(300);
+    expect(scans).toEqual([]);
+    expect(page.url()).toBe(before);
+  });
+
+  test('a shorter touch scans, as before', async ({ page }) => {
+    await page.locator('#source').fill(SKILLS_MAP);
+    const touch = await finger(page);
+    await touch.down();
+    await page.waitForTimeout(300);
+    await touch.up();
+    await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe(SKILLS_MAP);
+    await expect(page.locator('#skill-list .skill-name', { hasText: 'release-notes' })).toBeVisible();
+  });
+
   test('moved off the button sooner → nothing, even when let go after 3 seconds', async ({ page }) => {
     const tabs: unknown[] = [];
     page.context().on('page', (tab) => tabs.push(tab));
