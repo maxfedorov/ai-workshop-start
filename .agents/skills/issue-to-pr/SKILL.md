@@ -55,6 +55,24 @@ Read [spec/](../../../spec/) and the code the feature touches. Then decide:
     | xargs -r -n1 gh pr view --json number,state --jq 'select(.state == "OPEN") | .number'
   ```
 
+## 1a. A missing detail while building → ask in Slack, keep going
+
+Once §1 says **Build it**, a missing *detail* — a choice the issue left open, an edge case it
+didn't cover, a name or format it didn't specify — is not a reason to stop or guess: ask in
+Slack and keep going once you have an answer.
+
+Post the question in the **air-test-mfedorov** channel (id `C0CAFST6MQF`) of the **AI Workshop
+at JetBrains** Slack workspace, with your Slack tool. Ask one focused question (or a short few),
+concrete, with your best guess attached when you have one — the same bar as a §1 issue comment.
+
+This is only for a detail of *how* to build it. Whether to build it at all, whether it's too big
+for one PR, or whether it fits the spec still go through §1's **Ask, and stop** on the issue
+itself, never Slack.
+
+Keep working on whatever the answer doesn't block while you wait for the reply. Once it arrives,
+fold it into the spec (§3) and plan (§4) exactly as if it had been in the issue from the start,
+and note in the PR's `## Plan` section that the detail came from Slack.
+
 ## 2. Branch
 
 From a freshly fetched `main`, never on `main` itself:
