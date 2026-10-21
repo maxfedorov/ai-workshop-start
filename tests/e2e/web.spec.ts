@@ -33,8 +33,8 @@ test('a filter that matches nothing shows the empty state and a button that clea
   await expect(page.locator('#skill-list li').first()).toBeVisible();
 });
 
-test('a word that starts another: the longer one is marked whole, in either order', async ({ page }) => {
-  for (const filter of ['co code', 'code co']) {
+test('words whose matches overlap are marked as one, each word whole, in either order', async ({ page }) => {
+  for (const filter of ['co code', 'code co', 'ode co']) {
     await page.locator('#filter').fill(filter);
     await expect(page.locator('#count')).toHaveText('1 of 4 skills');
     const fields = await page.locator('#skill-list .skill-item > span').evaluateAll((spans) => spans.map((span) => span.innerHTML));
@@ -152,7 +152,7 @@ test('an organization has no map: ?view=map shows the organization', async ({ pa
   // Typing keeps the organization's address, which has no map.
   await expect(page).toHaveURL(/[?&]q=twins$/);
   await expect(page).not.toHaveURL(/view=map/);
-  // A word that starts another: the longer one is marked whole, in a repository's name and path too.
+  // Words whose matches overlap: marked as one, each word whole, in a repository's name and path too.
   await page.locator('#filter').fill('tw twins');
   await expect(page.locator('#skill-list .skill-name')).toHaveJSProperty('innerHTML', '<mark>twins</mark>');
   await expect(page.locator('#skill-list .skill-path')).toHaveJSProperty('innerHTML', 'JetBrains/<mark>twins</mark>');

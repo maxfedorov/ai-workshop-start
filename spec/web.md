@@ -25,7 +25,7 @@ A local page over the same scan; *nothing is stored*.
 - A lone `-`, `""` or an empty `name:` → ignored, as if not typed
 - **Order**: skills whose *name* has every word come *first*; otherwise the scan's order
 - The matches are *marked*, only in the fields they were searched in; exclusions are not
-- A word that starts another, `co code` → the *longer* one is marked whole, in either order
+- Words whose matches overlap, `co code` or `ode co` → marked as *one*, each word whole, in either order
 - No skill matches → "No skill matches the filter." and a button that *clears* it
 - In the URL as `?q=…`; typing *replaces* the history entry, it adds none
 ## Skills map

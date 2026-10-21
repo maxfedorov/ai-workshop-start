@@ -45,11 +45,26 @@ export function marked(terms, field) {
   return terms.filter((term) => !term.exclude && (!term.field || term.field === field)).map((term) => term.text);
 }
 
-/** The text split at the words, the matches at the odd indexes; where one word starts another, the
- * longer one wins. Case is ignored. */
+/** The text split at the words' matches, the matches at the odd indexes. Matches that overlap, such
+ * as `co` and `code`, or `co` and `ode`, are one, so each word is marked whole. Case is ignored. */
 export function markParts(text, words) {
-  if (words.length === 0) return [text];
-  const longest = [...words].sort((a, b) => b.length - a.length);
-  const pattern = new RegExp(`(${longest.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-  return text.split(pattern);
+  const ranges = words.flatMap((word) => {
+    const pattern = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const found = [];
+    for (let match; (match = pattern.exec(text)); pattern.lastIndex = match.index + 1) found.push([match.index, match.index + match[0].length]);
+    return found;
+  }).sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  for (const [from, to] of ranges) {
+    const last = merged.at(-1);
+    if (last && from < last[1]) last[1] = Math.max(last[1], to);
+    else merged.push([from, to]);
+  }
+  const parts = [];
+  let end = 0;
+  for (const [from, to] of merged) {
+    parts.push(text.slice(end, from), text.slice(from, to));
+    end = to;
+  }
+  return [...parts, text.slice(end)];
 }
