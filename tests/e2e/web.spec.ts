@@ -296,3 +296,40 @@ test('while held, the Scan button fills up', async ({ page }) => {
   await page.mouse.up();
   await expect(button).not.toHaveClass(/holding/);
 });
+
+test.describe('holding Scan with a finger', () => {
+  test.use({ hasTouch: true });
+
+  /** A finger on the page, through the browser's own touch input: start, move, end. */
+  async function finger(page: import('@playwright/test').Page) {
+    const cdp = await page.context().newCDPSession(page);
+    const box = (await page.locator('#scan-form button[type=submit]').boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    return {
+      down: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] }),
+      moveOff: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + 300 }] }),
+      up: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }),
+    };
+  }
+
+  test('moved off the button sooner → nothing, even when let go after 3 seconds', async ({ page }) => {
+    const tabs: unknown[] = [];
+    page.context().on('page', (tab) => tabs.push(tab));
+    await page.locator('#source').fill('https://github.com/anthropics/skills');
+    const before = page.url();
+    const scans = scansFrom(page);
+    const touch = await finger(page);
+    await touch.down();
+    await expect(page.locator('#scan-form button[type=submit]')).toHaveClass(/holding/);
+    await page.waitForTimeout(500);
+    await touch.moveOff();
+    // Ended by the move, not by the 3 seconds running out.
+    await expect(page.locator('#scan-form button[type=submit]')).not.toHaveClass(/holding/, { timeout: 500 });
+    await page.waitForTimeout(HOLD);
+    await touch.up();
+    await page.waitForTimeout(500);
+    expect(tabs).toEqual([]);
+    expect(scans).toEqual([]);
+    expect(page.url()).toBe(before);
+  });
+});

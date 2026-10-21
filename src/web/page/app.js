@@ -536,6 +536,8 @@ function openSource() {
 
 page.scanButton.addEventListener('pointerdown', (event) => {
   if (event.button !== 0) return;
+  // A finger is captured by the button it touched, so it would never leave it: let it go.
+  page.scanButton.releasePointerCapture(event.pointerId);
   held = false;
   endHold();
   page.scanButton.classList.add('holding');
