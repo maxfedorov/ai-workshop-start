@@ -38,7 +38,18 @@ export type Skill = {
   commit: string;
   /** The same skill in other agents' folders. */
   copies: string[];
+  /** The same skill directory in other agents' folders, edited apart from this one. */
+  drifted: Drift[];
   /** The SKILL.md file's text, front matter included. */
+  content: string;
+};
+
+/** A drifted copy of a skill: its SKILL.md, and how that differs from the skill's own. */
+export type Drift = {
+  path: string;
+  /** For example `description differs`, `body differs (+12 −3 lines)`. */
+  differences: string[];
+  /** The drifted SKILL.md file's text, front matter included. */
   content: string;
 };
 
@@ -46,7 +57,7 @@ export type Skill = {
  * The SKILL.md file, from where its repository is: on GitHub at the scanned commit,
  * `https://github.com/<owner>/<repo>/blob/<commit>/<path>`; in a local directory, the file itself.
  */
-export function skillLink(repository: Repository, skill: Skill): string {
+export function skillLink(repository: Repository, skill: Pick<Skill, 'path' | 'commit'>): string {
   const path = skill.path.split('/').map(encodeURIComponent).join('/');
   return skill.commit ? `${repository.url}/blob/${skill.commit}/${path}` : `${repository.url}/${path}`;
 }

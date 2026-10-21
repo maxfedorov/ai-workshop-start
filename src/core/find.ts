@@ -1,5 +1,9 @@
-/** A skill found in a repository: its SKILL.md and its name. */
-export type SkillFile = { path: string; name: string };
+/**
+ * A skill found in a repository: its SKILL.md, its name, and its place: the folders above its
+ * SKILL_ROOTS and its directory, `module/x` for `module/.claude/skills/x/SKILL.md`. The same place
+ * under two roots is the same skill, kept for two agents.
+ */
+export type SkillFile = { path: string; name: string; place: string };
 
 /** Where agents keep a repository's own skills, at any depth. */
 export const SKILL_ROOTS = ['.agents/skills', '.claude/skills', '.github/skills', 'agent/skills'];
@@ -22,7 +26,8 @@ export function findSkills(paths: string[], repositoryName: string): SkillFile[]
       if (segments.at(-1) !== 'SKILL.md') return [];
       const ancestors = rootAncestors(segments);
       if (!ancestors || ancestors.some(isExcluded)) return [];
-      return [{ path, name: segments.at(-2) ?? repositoryName }];
+      const name = segments.at(-2) ?? repositoryName;
+      return [{ path, name, place: [...ancestors, name].join('/') }];
     })
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }

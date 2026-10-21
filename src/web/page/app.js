@@ -234,7 +234,11 @@ function renderList() {
         choose(skill, { open: true });
       },
     },
-      h('span', { class: 'skill-name' }, highlight(skill.name, marked(terms, 'name')), skill.warning ? h('span', { class: 'badge warn', title: skill.warning }, '!') : null),
+      h('span', { class: 'skill-name' },
+        highlight(skill.name, marked(terms, 'name')),
+        skill.warning ? h('span', { class: 'badge warn', title: skill.warning }, '!') : null,
+        skill.drifted.length ? h('span', { class: 'badge drift', title: `Drifted from ${skill.drifted.map((drift) => drift.path).join(', ')}` }, 'drifted') : null,
+      ),
       skill.summary ? h('span', { class: 'skill-summary' }, highlight(skill.summary, marked(terms, 'description'))) : null,
       h('span', { class: 'skill-path mono' }, highlight(skill.path, marked(terms, 'path'))),
     ),
@@ -408,11 +412,19 @@ function choose(skill, { open = false, replace = false } = {}) {
 
 function renderDetail() {
   const skill = selected;
+  // Compare is only there for a skill with drifted copies.
+  if (mode === 'compare' && !skill.drifted.length) mode = 'rendered';
   const local = !result.repository.commit;
   const directory = skill.path.split('/').slice(0, -1).join('/');
   const meta = [
     ['Path', h('button', { class: 'path-button mono', type: 'button', title: 'Copy the path', onclick: () => copy(skill.path, 'Path copied') }, skill.path)],
     skill.copies.length ? ['Also in', skill.copies.map((copyPath) => h('code', {}, copyPath))] : null,
+    skill.drifted.length ? ['Drifted', h('ul', { class: 'drifted' }, skill.drifted.map((drift) => h('li', {},
+      local
+        ? h('button', { class: 'path-button mono', type: 'button', title: 'Copy the file path', onclick: () => copy(decodeURIComponent(new URL(drift.link).pathname), 'File path copied') }, drift.path)
+        : h('a', { class: 'mono', href: drift.link, target: '_blank', rel: 'noopener noreferrer', title: 'Open on GitHub' }, `${drift.path} ↗`),
+      h('span', { class: 'drift-differences' }, drift.differences.join('; ')),
+    )))] : null,
     ...skill.properties.map(([key, value]) => [key, h('span', { class: 'property' }, value)]),
   ].filter(Boolean);
 
@@ -435,6 +447,7 @@ function renderDetail() {
     h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'How to show SKILL.md' },
       tab('rendered', 'Rendered'),
       tab('source', 'SKILL.md source'),
+      skill.drifted.length ? tab('compare', 'Compare') : null,
     ),
     h('div', { class: 'tab-panel', id: 'skill-panel', role: 'tabpanel' }),
   ));
@@ -461,7 +474,14 @@ function tab(name, label) {
 function renderPanel() {
   const panel = $('skill-panel');
   panel.setAttribute('aria-labelledby', `tab-${mode}`);
-  if (mode === 'source') {
+  if (mode === 'compare') {
+    // Each drifted copy against the skill's own file; every line goes in as text.
+    panel.replaceChildren(...selected.drifted.map((drift) => h('section', { class: 'compare' },
+      h('p', { class: 'compare-head mono' }, h('span', { class: 'removed' }, `− ${selected.path}`), h('span', { class: 'added' }, `+ ${drift.path}`)),
+      h('pre', { class: 'source diff' }, h('code', {}, drift.diff.map((line) =>
+        h('span', { class: `line ${line.kind}` }, `${{ same: ' ', removed: '−', added: '+' }[line.kind]} ${line.text}\n`)))),
+    )));
+  } else if (mode === 'source') {
     const lines = selected.content.replace(/\n$/, '').split('\n');
     panel.replaceChildren(h('pre', { class: 'source' }, h('code', {}, lines.map((line) => h('span', { class: 'line' }, `${line}\n`)))));
   } else if (selected.html.trim()) {

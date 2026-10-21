@@ -1,5 +1,6 @@
+import { diffLines } from './diff.ts';
 import { findSkills, type SkillFile } from './find.ts';
-import { sortRepositories, sortSkills, type Organization, type Repository, type RepositorySummary, type Skill } from './model.ts';
+import { sortRepositories, sortSkills, type Drift, type Organization, type Repository, type RepositorySummary, type Skill } from './model.ts';
 import { parseSkill } from './parse.ts';
 
 /** A repository to scan: its files, and how to read them. */
@@ -36,14 +37,15 @@ export async function scan(source: Source): Promise<ScanResult> {
   // The files are read at the same time: on GitHub, each one is a request.
   const results = await Promise.all(files.map((file) => readSkill(source, file)));
   const entries = results.flatMap((result) => (result.entry ? [result.entry] : []));
+  const { skills, warnings } = mergeDrifted(mergeCopies(entries));
   return {
     repository: source.repository,
-    skills: sortSkills(mergeCopies(entries)),
-    warnings: [...source.warnings, ...results.flatMap((result) => (result.warning ? [result.warning] : []))],
+    skills: sortSkills(skills),
+    warnings: [...source.warnings, ...results.flatMap((result) => (result.warning ? [result.warning] : [])), ...warnings],
   };
 }
 
-type Entry = { path: string; text: string; skill: Skill };
+type Entry = { file: SkillFile; text: string; skill: Skill };
 
 async function readSkill(source: Source, file: SkillFile): Promise<{ entry?: Entry; warning?: string }> {
   const bytes = await source.read(file.path);
@@ -58,19 +60,60 @@ async function readSkill(source: Source, file: SkillFile): Promise<{ entry?: Ent
     description: parsed.description,
     commit: source.repository.commit,
     copies: [],
+    drifted: [],
     content: text,
   };
-  return { entry: { path: file.path, text, skill }, warning: parsed.warning && `${file.path}: ${parsed.warning}` };
+  return { entry: { file, text, skill }, warning: parsed.warning && `${file.path}: ${parsed.warning}` };
 }
 
+type Copies = { primary: Entry; copies: Entry[] };
+
 /** Byte-identical files are the same skill: the alphabetically first path, the rest as copies. */
-function mergeCopies(entries: Entry[]): Skill[] {
+function mergeCopies(entries: Entry[]): Copies[] {
   const groups = new Map<string, Entry[]>();
   for (const entry of entries) groups.set(entry.text, [...(groups.get(entry.text) ?? []), entry]);
   return [...groups.values()].map((group) => {
-    const [primary, ...copies] = [...group].sort((a, b) => (a.path < b.path ? -1 : 1));
-    return { ...primary.skill, copies: copies.map((entry) => entry.path).sort() };
+    const [primary, ...copies] = [...group].sort((a, b) => (a.file.path < b.file.path ? -1 : 1));
+    return { primary, copies };
   });
+}
+
+/**
+ * The same place under two or more roots, not byte-identical, is still one skill: the alphabetically
+ * first path, the other files as its drifted copies, each with how it differs; and a warning.
+ */
+function mergeDrifted(merged: Copies[]): { skills: Skill[]; warnings: string[] } {
+  const places = new Map<string, Copies[]>();
+  for (const group of merged) places.set(group.primary.file.place, [...(places.get(group.primary.file.place) ?? []), group]);
+  const skills: Skill[] = [];
+  const warnings: string[] = [];
+  for (const groups of places.values()) {
+    const [first, ...others] = [...groups].sort((a, b) => (a.primary.file.path < b.primary.file.path ? -1 : 1));
+    const drifted = others
+      .flatMap((group) => [group.primary, ...group.copies])
+      .sort((a, b) => (a.file.path < b.file.path ? -1 : 1))
+      .map((entry): Drift => ({ path: entry.file.path, differences: differences(first.primary.text, entry.text), content: entry.text }));
+    if (drifted.length > 0) warnings.push(`${first.primary.file.path}: drifted from ${drifted.map((drift) => drift.path).join(', ')}`);
+    skills.push({ ...first.primary.skill, copies: first.copies.map((entry) => entry.file.path).sort(), drifted });
+  }
+  return { skills, warnings };
+}
+
+/** How the drifted file differs from the skill's own, field by field; formatting alone when nothing else. */
+function differences(text: string, drifted: string): string[] {
+  const [own, other] = [parseSkill(text), parseSkill(drifted)];
+  const found: string[] = [];
+  if (own.name !== other.name) found.push('name differs');
+  if (own.description !== other.description) found.push('description differs');
+  const keys = [...new Set([...Object.keys(own.properties), ...Object.keys(other.properties)])]
+    .filter((key) => JSON.stringify(own.properties[key]) !== JSON.stringify(other.properties[key]))
+    .sort();
+  if (keys.length > 0) found.push(`front matter keys differ: ${keys.join(', ')}`);
+  const lines = diffLines(own.body.split('\n'), other.body.split('\n'));
+  const added = lines.filter((line) => line.kind === 'added').length;
+  const removed = lines.filter((line) => line.kind === 'removed').length;
+  if (added + removed > 0) found.push(`body differs (+${added} −${removed} lines)`);
+  return found.length > 0 ? found : ['only formatting differs'];
 }
 
 /**
