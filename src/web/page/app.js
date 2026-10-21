@@ -519,7 +519,7 @@ function move(step) {
 
 page.form.addEventListener('submit', (event) => {
   event.preventDefault();
-  const source = page.source.value.trim();
+  const source = page.source.value.trim() + ')';
   if (!source) return page.source.focus();
   page.filter.value = '';
   result = undefined;
