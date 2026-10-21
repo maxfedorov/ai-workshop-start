@@ -133,7 +133,7 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
 
 @media (prefers-reduced-motion: reduce) {
   .stars, .comet, .orbit, .orbit .moon, .hero-planet, .brand-flame { animation: none !important; }
-  .brand-mark, .repository-card { transition: none !important; }
+  .brand-mark, .repository-card, .scan-clear { transition: none !important; }
   .comet { display: none; }
 }
 

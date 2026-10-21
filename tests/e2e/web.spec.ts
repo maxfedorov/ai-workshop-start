@@ -67,6 +67,10 @@ test.describe('the scan field’s clear button', () => {
     await expect(clear).toBeHidden();
   });
 
+  test('with reduced motion, its hover has no transition', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Clear the scan URL' })).toHaveCSS('transition-duration', '0s');
+  });
+
   test('after clearing, what is typed next scans as usual', async ({ page }) => {
     await page.getByRole('button', { name: 'Clear the scan URL' }).click();
     await page.keyboard.type('./fixture');
