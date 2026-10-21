@@ -192,6 +192,19 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
   stroke-width: 2;
   stroke-linecap: round;
 }
+/* Scan, held: fills up over the hold (HOLD in app.js), then opens the field's link */
+.scan-form .button { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-touch-callout: none; }
+.scan-form .button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+.scan-form .button.holding::after { animation: hold-fill 3s linear forwards; }
+@keyframes hold-fill { to { transform: scaleX(1); } }
 
 input[type='text'], input[type='search'] {
   width: 100%;

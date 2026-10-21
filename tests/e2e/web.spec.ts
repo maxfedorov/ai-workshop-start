@@ -203,3 +203,96 @@ test('loading a source: "Charting skills…" and the source', async ({ page }) =
   await expect(page.locator('#state-panel .state-text')).toHaveText('/somewhere');
   expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title', 'P.state-text mono']);
 });
+
+// Holding Scan: the field's link in a new tab instead of a scan. A link to this same server, so
+// the new tab loads without the network.
+const HOLD = 3000;
+
+/** Presses Scan with the mouse, holds it `ms`, and lets go: on the button, or off it. */
+async function holdScan(page: import('@playwright/test').Page, ms: number, { off = false } = {}) {
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(ms);
+  if (off) await page.locator('#filter').hover();
+  await page.mouse.up();
+}
+
+/** The /api/scan requests the page makes from now on. */
+function scansFrom(page: import('@playwright/test').Page) {
+  const scans: string[] = [];
+  page.on('request', (request) => { if (request.url().includes('/api/scan')) scans.push(request.url()); });
+  return scans;
+}
+
+test('holding Scan 3 seconds opens the link in a new tab; the page stays, unscanned', async ({ page, baseURL }) => {
+  const link = `${baseURL}/?source=${encodeURIComponent(SKILLS_MAP)}`;
+  const before = page.url();
+  await page.locator('#source').fill(`  ${link}  `);
+  const scans = scansFrom(page);
+  const opened = page.context().waitForEvent('page');
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await expect(button).toHaveClass(/holding/);
+  const tab = await opened;
+  await expect(button).not.toHaveClass(/holding/);
+  await page.mouse.up();
+  await tab.waitForLoadState();
+  expect(tab.url()).toBe(link);
+  await expect(tab.locator('#skill-list li').first()).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(before);
+  expect(scans).toEqual([]);
+  await expect(page.locator('#source')).toHaveValue(`  ${link}  `);
+  await expect(page.locator('#skill-list .skill-name').first()).toHaveText('code-style');
+});
+
+test('a shorter press on Scan scans, as before; moved off the button sooner → nothing', async ({ page }) => {
+  const tabs: unknown[] = [];
+  page.context().on('page', (tab) => tabs.push(tab));
+  await page.locator('#source').fill(SKILLS_MAP);
+  const before = page.url();
+  const scans = scansFrom(page);
+  await holdScan(page, HOLD - 1000, { off: true });
+  await expect(page.locator('#scan-form button[type=submit]')).not.toHaveClass(/holding/);
+  await page.waitForTimeout(1500);
+  expect(scans).toEqual([]);
+  expect(page.url()).toBe(before);
+
+  await holdScan(page, 300);
+  await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe(SKILLS_MAP);
+  await expect(page.locator('#skill-list .skill-name', { hasText: 'release-notes' })).toBeVisible();
+  expect(scans).toHaveLength(1);
+  expect(tabs).toEqual([]);
+});
+
+test('holding Scan over a local directory or an empty field: nothing happens', async ({ page }) => {
+  const tabs: unknown[] = [];
+  page.context().on('page', (tab) => tabs.push(tab));
+  const before = page.url();
+  const scans = scansFrom(page);
+  for (const text of [SKILLS_MAP, '']) {
+    await page.locator('#source').fill(text);
+    await holdScan(page, HOLD + 300);
+    await page.waitForTimeout(300);
+    expect(page.url()).toBe(before);
+    await expect(page.locator('#toast')).not.toHaveClass(/shown/);
+  }
+  expect(scans).toEqual([]);
+  expect(tabs).toEqual([]);
+});
+
+test('while held, the Scan button fills up', async ({ page }) => {
+  await page.locator('#source').fill('https://github.com/anthropics/skills');
+  // The tab the hold would open, kept from the network.
+  await page.context().route('https://github.com/**', (route) => route.fulfill({ body: '' }));
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await expect(button).toHaveClass(/holding/);
+  // The screenshot plays the fill to its end: the button as it is when the tab opens.
+  await expect(page.locator('#scan-form')).toHaveScreenshot('scan-held.png');
+  await page.mouse.up();
+  await expect(button).not.toHaveClass(/holding/);
+});
