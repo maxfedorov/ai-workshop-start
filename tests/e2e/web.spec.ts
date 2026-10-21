@@ -1,5 +1,8 @@
 // The web view in a real browser, against ./fixture (see tests/e2e/README.md for how the
 // screenshots work). Each case is a moment from spec/web.md worth seeing, not just asserting.
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -56,6 +59,22 @@ test("the map's link carries the filter being typed", async ({ page }) => {
   await expect(page.locator('#map-link')).toHaveAttribute('href', /[?&]view=map&q=checklist$/);
   await page.locator('#filter').fill('');
   await expect(page.locator('#map-link')).toHaveAttribute('href', /[?&]view=map$/);
+});
+
+test("a group's word is marked in the names as a whole word, never inside another", async ({ page }) => {
+  const root = mkdtempSync(join(tmpdir(), 'skill-atlas-'));
+  try {
+    for (const name of ['rapid-api', 'api-docs']) {
+      mkdirSync(join(root, '.claude/skills', name), { recursive: true });
+      writeFileSync(join(root, '.claude/skills', name, 'SKILL.md'), `---\nname: ${name}\ndescription: The ${name} skill.\n---\n`);
+    }
+    await page.goto(`/?source=${encodeURIComponent(root)}&view=map`);
+    await expect(page.locator('#detail .map-group .map-word > span:first-child')).toHaveText(['api']);
+    const names = await page.locator('#detail .map-group .map-skill').evaluateAll((links) => links.map((link) => link.innerHTML));
+    expect(names).toEqual(['<mark>api</mark>-docs', 'rapid-<mark>api</mark>']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('a skill chosen on the map opens its SKILL.md, and Back returns to the map', async ({ page }) => {

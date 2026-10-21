@@ -4,12 +4,20 @@
 /** Words too little to group by. */
 export const LITTLE_WORDS = new Set(['a', 'an', 'and', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'with']);
 
-/** A name's words, lowercased, each once: split at anything but a letter or a digit, and at camelCase. */
+/**
+ * The name in pieces, separators kept, so the page can mark a word in it: each piece's `word` is
+ * its text lowercased, or '' for a separator. Split at anything but a letter or a digit, and at camelCase.
+ */
+export function nameParts(name) {
+  return name.split(/([^\p{L}\p{N}]+)/u).flatMap((part, index) => index % 2
+    ? [{ text: part, word: '' }]
+    : part.split(/(?<=[\p{Ll}\p{N}])(?=\p{Lu})/u).filter(Boolean).map((text) => ({ text, word: text.toLowerCase() })));
+}
+
+/** A name's words, lowercased, each once; little words and one-letter ones left out. */
 export function nameWords(name) {
-  const words = name
-    .split(/[^\p{L}\p{N}]+/u)
-    .flatMap((part) => part.split(/(?<=[\p{Ll}\p{N}])(?=\p{Lu})/u))
-    .map((word) => word.toLowerCase())
+  const words = nameParts(name)
+    .map((part) => part.word)
     .filter((word) => word.length > 1 && !LITTLE_WORDS.has(word));
   return [...new Set(words)];
 }

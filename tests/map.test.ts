@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { addressOf, readAddress } from '../src/web/page/address.js';
 import { filterSkills, parseFilter } from '../src/web/page/filter.js';
-import { mapSkills, nameWords } from '../src/web/page/map.js';
+import { mapSkills, nameParts, nameWords } from '../src/web/page/map.js';
 import { createWebServer } from '../src/web/server.ts';
 import { FIXTURE, open } from './helpers.ts';
 
@@ -80,6 +80,18 @@ test("a name's words: split at anything but a letter or a digit and at camelCase
   assert.deepEqual(nameWords('HTTPServer-v2'), ['httpserver', 'v2']);
   assert.deepEqual(nameWords('Kotlin-kotlin-KOTLIN'), ['kotlin']);
   assert.deepEqual(nameWords('écrire-les-tests'), ['écrire', 'les', 'tests']);
+});
+
+test("a group's word is marked in the names as a whole word, never inside another", async (t) => {
+  /** The name with the word's pieces in [brackets], as the page marks them. */
+  const marked = (name: string, word: string) => nameParts(name).map((part: { text: string; word: string }) => (part.word === word ? `[${part.text}]` : part.text)).join('');
+  assert.equal(marked('rapid-api', 'api'), 'rapid-[api]');
+  assert.equal(marked('preview-review', 'review'), 'preview-[review]');
+  assert.equal(marked('prerelease-notes', 'release'), 'prerelease-notes');
+  assert.equal(marked('writeReleaseNotes', 'release'), 'write[Release]Notes');
+  assert.equal(marked('--Code__code--', 'code'), '--[Code]__[code]--');
+  const skills = await skillsOf(t, repository(t, ['rapid-api', 'api-docs']));
+  assert.deepEqual(shown(mapSkills(skills)), { groups: [['api', ['api-docs', 'rapid-api']]], alone: [] });
 });
 
 test('the map: little words and one-letter ones never make a group', async (t) => {

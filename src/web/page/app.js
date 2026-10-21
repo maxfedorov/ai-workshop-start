@@ -5,7 +5,7 @@
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
 import { addressOf, readAddress } from './address.js';
 import { filterRepositories, filterSkills, marked, parseFilter } from './filter.js';
-import { mapSkills } from './map.js';
+import { mapSkills, nameParts } from './map.js';
 
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
 
@@ -344,7 +344,7 @@ function renderMap() {
         event.preventDefault();
         choose(skill, { open: true });
       },
-    }, word ? highlight(skill.name, [word]) : skill.name),
+    }, word ? nameParts(skill.name).map((part) => (part.word === word ? h('mark', {}, part.text) : part.text)) : skill.name),
   );
   const heading = (title, skills) => h('h2', { class: 'map-word' }, h('span', {}, title), h('span', { class: 'map-count' }, count(skills.length, 'skill', 'skills')));
   page.detail.replaceChildren(h('article', { class: 'skill skills-map' },

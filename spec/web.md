@@ -36,6 +36,7 @@ repository's header, `Skills map`, in place of the selected skill.
   and one-letter ones → *never* a group
 - **A group**: a word that *two or more* skills share; a skill is in *every* group of its words
 - **Order**: the groups with the most skills first, then by word; in each, the list's order
+- In each group, its word is *marked* in the names: as a whole word, never inside another
 - A skill that shares no word → under **On their own**
 - No word shared → "No two skills share a word in their names." and every skill on its own
 - The map shows the skills the [Filter](#filter) leaves; none → "No skill matches the filter."
