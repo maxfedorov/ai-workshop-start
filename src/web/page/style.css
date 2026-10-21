@@ -685,3 +685,38 @@ span.commit { cursor: default; }
   .back { display: inline-flex; }
   .hints { display: none; }
 }
+
+/* The skills map: the skills grouped by the words their names share */
+
+.map-link {
+  font: 600 12px var(--sans);
+  color: var(--nebula);
+  padding: 2px 10px;
+  border: 1px solid rgba(240, 171, 252, 0.3);
+  border-radius: 999px;
+  background: rgba(240, 171, 252, 0.07);
+}
+.map-link:hover, .map-link[aria-current] { text-decoration: none; color: #fff; background: rgba(240, 171, 252, 0.18); border-color: rgba(240, 171, 252, 0.55); }
+.map-groups { list-style: none; margin: 30px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.map-group, .map-alone {
+  padding: 14px 16px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-raised);
+}
+.map-alone { margin-top: 12px; background: transparent; border-style: dashed; }
+.map-word { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--text); word-break: break-word; }
+.map-count { flex: none; font: 12px var(--mono); color: var(--comet); }
+.map-skills { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.map-skill {
+  display: inline-block;
+  font: 12.5px var(--mono);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(14, 17, 38, 0.6);
+  word-break: break-all;
+}
+.map-skill:hover { text-decoration: none; color: #fff; border-color: var(--accent); box-shadow: var(--glow); }
+.map-none { margin: 30px 0 0; }

@@ -24,6 +24,7 @@ const ASSETS: Record<string, { file: string; type: string }> = {
   '/app.js': { file: 'app.js', type: 'text/javascript; charset=utf-8' },
   '/address.js': { file: 'address.js', type: 'text/javascript; charset=utf-8' },
   '/filter.js': { file: 'filter.js', type: 'text/javascript; charset=utf-8' },
+  '/map.js': { file: 'map.js', type: 'text/javascript; charset=utf-8' },
   '/style.css': { file: 'style.css', type: 'text/css; charset=utf-8' },
 };
 

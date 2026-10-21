@@ -89,13 +89,13 @@ test('the filter: matches are marked only in the fields they were searched in, e
 });
 
 test('the filter in the URL: ?q=…, next to the source and the skill', () => {
-  const state = { source: 'https://github.com/o/r', skill: '.claude/skills/a/SKILL.md', filter: 'name:"a b" -c' };
+  const state = { source: 'https://github.com/o/r', skill: '.claude/skills/a/SKILL.md', filter: 'name:"a b" -c', view: '' };
   const address = addressOf('/', state);
   assert.equal(address, '/?source=https%3A%2F%2Fgithub.com%2Fo%2Fr&skill=.claude%2Fskills%2Fa%2FSKILL.md&q=name%3A%22a+b%22+-c');
   assert.deepEqual(readAddress(new URL(address, 'http://localhost').search), state);
   assert.equal(addressOf('/', { source: 'x', skill: '', filter: '  ' }), '/?source=x');
   assert.equal(addressOf('/', { source: '', skill: '', filter: '' }), '/');
-  assert.deepEqual(readAddress('?source=x'), { source: 'x', skill: '', filter: '' });
+  assert.deepEqual(readAddress('?source=x'), { source: 'x', skill: '', filter: '', view: '' });
 });
 
 test('the page sends its filter and address modules', async (t) => {
