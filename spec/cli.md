@@ -9,6 +9,8 @@ JetBrains/kotlin · 6 skills
 build-tools-bump-gradle-api — Bumps the Gradle API…
   https://github.com/JetBrains/kotlin/blob/<commit>/…
 ```
+- A **ref** other than the default branch → named in the header: `JetBrains/kotlin @ feature/x · 6 skills`;
+  see [Branch, tag or commit](analysis.md#branch-tag-or-commit)
 - Sorted by **name**; the description's *first sentence*
 - `also in <paths>` for copies; warnings go to *stderr*
 ## Organization

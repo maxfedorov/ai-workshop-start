@@ -2,7 +2,8 @@
 `./skill-atlas serve [GitHub URL | directory] [--port 3000] [--host 127.0.0.1]`
 A local page over the same scan; *nothing is stored*.
 ## Page
-- The **repository**: its link, and the scanned commit
+- The **repository**: its link, and the scanned commit; a *ref* other than the default branch
+  → shown next to it, linked to that ref on GitHub
 - The **skills**: name, first sentence and path, *filtered as you type*; see [Filter](#filter)
 - The selected skill's **SKILL.md**: *rendered*, or its *source*; its link, path, copies and front matter
 - The **skills map**: the skills *grouped by the words their names share*; see [Skills map](#skills-map)
@@ -17,6 +18,7 @@ A local page over the same scan; *nothing is stored*.
 - A scan that **fails** → "Lost in space", its *message*, the source unless the message names it,
   *Try again* if there is a source, and *Scan something else*; *nothing else*
 - The URL holds the source, the skill, the filter and the map: links, reloads and *Back* work
+- A source with a ref, `…/tree/<ref>` → kept *as typed*: links, reloads and *Back* reopen *that ref*
 - Keyboard: `/` filters, `↑` `↓` choose, `Esc` clears the filter
 ## Filter
 - **Words**: a skill shows when *every* word is in its name, description or path; case is ignored
@@ -49,6 +51,7 @@ repository's header, `Skills map`, in place of the selected skill.
 - In the URL as `?view=map`, without a skill; an organization → *no* map
 ## Details
 - `GET /api/scan?source=…`: the scan as JSON; without `source`, the one `serve` was given
+- A repository's JSON: its `repository` has the `commit` and the `ref`; `ref` is empty for the default branch
 - An organization's JSON: `organization`, its `repositories`, each with `skills`, a number
 - No source → 400; a failure explained to the user → 422 and its *message*
 - Markdown is *escaped first*: no HTML from a repository reaches the page

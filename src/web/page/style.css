@@ -237,6 +237,19 @@ a.repo-name:hover { color: #fff; }
   cursor: pointer;
 }
 .commit:hover { text-decoration: none; background: rgba(103, 232, 249, 0.16); color: var(--comet); }
+/* The branch, tag or commit scanned, when it is not the default branch */
+.ref {
+  font: 12px var(--mono);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--nebula);
+  padding: 2px 8px;
+  border: 1px solid rgba(240, 171, 252, 0.35);
+  border-radius: 999px;
+  background: rgba(240, 171, 252, 0.08);
+}
+.ref:hover { text-decoration: none; background: rgba(240, 171, 252, 0.18); color: var(--nebula); }
 
 /* Buttons */
 
