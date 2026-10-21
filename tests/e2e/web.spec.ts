@@ -203,3 +203,51 @@ test('loading a source: "Charting skills…" and the source', async ({ page }) =
   await expect(page.locator('#state-panel .state-text')).toHaveText('/somewhere');
   expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title', 'P.state-text mono']);
 });
+
+// Drifted copies, over fixture/fixtures/drifted: commits in .agents, .claude and .github, edited apart.
+const DRIFTED = fileURLToPath(new URL('../../fixture/fixtures/drifted', import.meta.url));
+
+test('a skill with drifted copies: a badge in the list, each copy and how it differs, and Compare shows the line diff', async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent(DRIFTED)}`);
+  await expect(page.locator('#count')).toHaveText('3 skills');
+  await expect(page.locator('#skill-list .badge.drift')).toHaveCount(1);
+  const commits = page.locator('#skill-list .skill-item', { hasText: 'commits' });
+  await expect(commits.locator('.badge.drift')).toHaveText('drifted');
+  await commits.click();
+  await expect(page.locator('#detail .drifted li')).toHaveText([
+    /^\.claude\/skills\/commits\/SKILL\.md\s*description differs; front matter keys differ: allowed-tools; body differs \(\+1 −0 lines\)$/,
+    /^\.github\/skills\/commits\/SKILL\.md\s*description differs; front matter keys differ: allowed-tools; body differs \(\+1 −0 lines\)$/,
+  ]);
+  await page.locator('#tab-compare').click();
+  await expect(page.locator('#tab-compare')).toHaveAttribute('aria-selected', 'true');
+  const first = page.locator('#detail .compare').first();
+  await expect(first.locator('.line.removed')).toHaveText(['− description: Write commit messages the way this repository does. Use for every commit.']);
+  await expect(first.locator('.line.added')).toHaveText([
+    '+ description: Write commit messages the way this team does. Use for every commit and every pull request.',
+    '+ allowed-tools: Bash(git commit:*)',
+    '+ Keep the subject under 72 characters.',
+  ]);
+  await expect(page.locator('#layout')).toHaveScreenshot('drifted-compare.png');
+
+  // A skill without drifted copies has no Compare: its SKILL.md shows rendered.
+  await page.locator('#skill-list .skill-item', { hasText: "project's code style" }).click();
+  await expect(page.locator('#tab-compare')).toHaveCount(0);
+  await expect(page.locator('#tab-rendered')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#detail .markdown')).toContainText('Four spaces, no tabs.');
+});
+
+test("Compare shows a drifted copy's HTML as text: none of it reaches the page", async ({ page }) => {
+  const root = mkdtempSync(join(tmpdir(), 'skill-atlas-'));
+  try {
+    for (const [folder, body] of [['.agents', 'Plain.'], ['.claude', '<img src=x onerror="document.title=1"><b>bold</b>']]) {
+      mkdirSync(join(root, folder, 'skills', 'html'), { recursive: true });
+      writeFileSync(join(root, folder, 'skills', 'html', 'SKILL.md'), `---\nname: html\ndescription: Shows HTML.\n---\n${body}\n`);
+    }
+    await page.goto(`/?source=${encodeURIComponent(root)}`);
+    await page.locator('#tab-compare').click();
+    await expect(page.locator('#detail .compare .line.added')).toHaveText(['+ <img src=x onerror="document.title=1"><b>bold</b>']);
+    await expect(page.locator('#detail .compare img, #detail .compare b')).toHaveCount(0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

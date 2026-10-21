@@ -5,6 +5,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { AtlasError } from '../core/errors.ts';
 import { firstSentence, skillLink } from '../core/model.ts';
+import { diffLines } from '../core/diff.ts';
 import { parseSkill } from '../core/parse.ts';
 import { isOrganization, scan, scanOrganization, type OrganizationSource, type ScanResult, type Source } from '../core/scan.ts';
 import { renderMarkdown } from './markdown.ts';
@@ -101,6 +102,13 @@ export function view(source: string, { repository, skills, warnings }: ScanResul
         path: skill.path,
         link,
         copies: skill.copies,
+        // Each drifted copy against the skill's own file, line by line: the page shows it as text.
+        drifted: skill.drifted.map((drift) => ({
+          path: drift.path,
+          link: skillLink(repository, { path: drift.path, commit: skill.commit }),
+          differences: drift.differences,
+          diff: diffLines(lines(skill.content), lines(drift.content)),
+        })),
         properties: Object.entries(parsed.properties).map(([key, value]) => [key, display(value)]),
         warning: parsed.warning,
         html: renderMarkdown(parsed.body, link),
@@ -108,6 +116,11 @@ export function view(source: string, { repository, skills, warnings }: ScanResul
       };
     }),
   };
+}
+
+/** A file's lines, without the empty one after its last newline. */
+function lines(text: string): string[] {
+  return text.replace(/\r?\n$/, '').split(/\r?\n/);
 }
 
 function display(value: unknown): string {

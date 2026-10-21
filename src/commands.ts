@@ -87,13 +87,14 @@ async function serveCommand(args: string[], context: Context) {
   context.print('Press Ctrl+C to stop.');
 }
 
-/** `<owner>/<repo> · N skills`, then each skill's name, first sentence and link. */
+/** `<owner>/<repo> · N skills`, then each skill's name, first sentence and link, its copies and drifted ones. */
 function printRepository(repository: Repository, skills: Skill[], { print }: Context) {
   print(`${repository.id} · ${skills.length} ${skills.length === 1 ? 'skill' : 'skills'}`);
   for (const skill of skills) {
     print(skill.description ? `${skill.name} — ${firstSentence(skill.description)}` : skill.name);
     print(`  ${skillLink(repository, skill)}`);
     if (skill.copies.length > 0) print(`  also in ${skill.copies.join(', ')}`);
+    for (const drift of skill.drifted) print(`  drifted: ${drift.path} (${drift.differences.join('; ')})`);
   }
 }
 

@@ -11,6 +11,7 @@ build-tools-bump-gradle-api — Bumps the Gradle API…
 ```
 - Sorted by **name**; the description's *first sentence*
 - `also in <paths>` for copies; warnings go to *stderr*
+- `drifted: <path> (<how>; …)` for each drifted copy, after `also in`
 ## Organization
 ```
 JetBrains · 871 repositories, 2 with skills

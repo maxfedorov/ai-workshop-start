@@ -5,6 +5,11 @@ A local page over the same scan; *nothing is stored*.
 - The **repository**: its link, and the scanned commit
 - The **skills**: name, first sentence and path, *filtered as you type*; see [Filter](#filter)
 - The selected skill's **SKILL.md**: *rendered*, or its *source*; its link, path, copies and front matter
+- A skill with **drifted copies**: a `drifted` badge in the list, next to the `!` warning one;
+  in its panel, *Drifted*: each path, a link to its file (a local one: *Copy* its path), and how it
+  differs; a **Compare** tab → a line diff of the SKILL.md sources for each drifted copy, the
+  skill's own lines `−`, the copy's `+`, as *text*
+- The **Compare** tab, chosen, then a skill without drifted copies → its *rendered* SKILL.md
 - The **skills map**: the skills *grouped by the words their names share*; see [Skills map](#skills-map)
 - Another repository: scanned from the page
 - An **organization**: how many repositories, how many with skills; each repository and its
@@ -42,6 +47,7 @@ repository's header, `Skills map`, in place of the selected skill.
 - **Order**: the groups with the most skills first, then by word; in each, the list's order
 - In each group, its word is *marked* in the names: as a whole word, never inside another
 - A skill that shares no word → under **On their own**
+- A skill with drifted copies → *once*, as in the list
 - No word shared → "No two skills share a word in their names." and every skill on its own
 - The map shows the skills the [Filter](#filter) leaves; none → "No skill matches the filter."
 - No skills in the repository → "No skills were found in this repository."
@@ -49,6 +55,7 @@ repository's header, `Skills map`, in place of the selected skill.
 - In the URL as `?view=map`, without a skill; an organization → *no* map
 ## Details
 - `GET /api/scan?source=…`: the scan as JSON; without `source`, the one `serve` was given
+- A skill's `drifted`: each copy's `path`, `link`, `differences` and `diff`, its lines with a `kind`: `same`, `removed` or `added`
 - An organization's JSON: `organization`, its `repositories`, each with `skills`, a number
 - No source → 400; a failure explained to the user → 422 and its *message*
 - Markdown is *escaped first*: no HTML from a repository reaches the page
