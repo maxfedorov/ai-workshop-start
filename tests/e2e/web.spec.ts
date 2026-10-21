@@ -49,6 +49,15 @@ test("the repository's header opens the skills map: the skills grouped by the wo
   await expect(page.locator('#detail')).toHaveScreenshot('skills-map.png');
 });
 
+test("the map's link carries the filter being typed", async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent(SKILLS_MAP)}&q=code`);
+  await expect(page.locator('#map-link')).toHaveAttribute('href', /[?&]view=map&q=code$/);
+  await page.locator('#filter').fill('checklist');
+  await expect(page.locator('#map-link')).toHaveAttribute('href', /[?&]view=map&q=checklist$/);
+  await page.locator('#filter').fill('');
+  await expect(page.locator('#map-link')).toHaveAttribute('href', /[?&]view=map$/);
+});
+
 test('a skill chosen on the map opens its SKILL.md, and Back returns to the map', async ({ page }) => {
   await page.goto(`/?source=${encodeURIComponent(SKILLS_MAP)}&view=map`);
   await page.locator('#detail .map-group', { hasText: 'release' }).locator('.map-skill', { hasText: 'release-notes' }).click();

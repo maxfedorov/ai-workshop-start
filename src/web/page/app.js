@@ -209,6 +209,8 @@ function renderList() {
   if (result.organization) return renderRepositories();
   const terms = parseFilter(page.filter.value);
   visible = filterSkills(result.skills, terms);
+  // The map shows what the list does, so its link carries the filter being typed.
+  $('map-link')?.setAttribute('href', href({ source: result.source, view: 'map' }));
   const total = result.skills.length;
   page.count.textContent = terms.length
     ? `${visible.length} of ${total} ${total === 1 ? 'skill' : 'skills'}`
