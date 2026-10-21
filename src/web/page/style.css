@@ -205,6 +205,10 @@ a:hover { color: #c7d2fe; text-decoration: underline; text-underline-offset: 3px
 }
 .scan-form .button.holding::after { animation: hold-fill 3s linear forwards; }
 @keyframes hold-fill { to { transform: scaleX(1); } }
+/* After the rule it stops: an @media rule adds no specificity, so the block above would lose */
+@media (prefers-reduced-motion: reduce) {
+  .scan-form .button.holding::after { animation: none; transform: scaleX(1); }
+}
 
 input[type='text'], input[type='search'] {
   width: 100%;

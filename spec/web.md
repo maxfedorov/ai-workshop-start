@@ -40,6 +40,7 @@ The field's link, opened in a new tab instead of scanned: *Scan* held down, with
 - **A web link** only: `http` or `https`, the field's text *trimmed*
 - Anything else, a local directory or an empty field → *nothing* happens: no tab, no scan, no message
 - While held, the button *fills up*; let go sooner → it empties
+- Reduced motion → no fill: the button is *lit* at once while held
 ## Skills map
 A repository's skills, grouped by the words their names share: opened from the
 repository's header, `Skills map`, in place of the selected skill.

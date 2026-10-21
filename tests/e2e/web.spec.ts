@@ -283,7 +283,32 @@ test('holding Scan over a local directory or an empty field: nothing happens', a
   expect(tabs).toEqual([]);
 });
 
-test('while held, the Scan button fills up', async ({ page }) => {
+/** The Scan button's fill: its animation and how far across it is. */
+function fill(page: import('@playwright/test').Page) {
+  return page.locator('#scan-form button[type=submit]').evaluate((button) => {
+    const style = button.ownerDocument.defaultView!.getComputedStyle(button, '::after');
+    return { animation: style.animationName, transform: style.transform };
+  });
+}
+
+test.describe('while held, the Scan button fills up', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('over the 3 seconds', async ({ page }) => {
+    await page.locator('#source').fill('https://github.com/anthropics/skills');
+    await page.context().route('https://github.com/**', (route) => route.fulfill({ body: '' }));
+    const button = page.locator('#scan-form button[type=submit]');
+    await button.hover();
+    await page.mouse.down();
+    await expect(button).toHaveClass(/holding/);
+    expect((await fill(page)).animation).toBe('hold-fill');
+    await page.mouse.up();
+    await expect(button).not.toHaveClass(/holding/);
+    expect(await fill(page)).toEqual({ animation: 'none', transform: 'matrix(0, 0, 0, 1, 0, 0)' });
+  });
+});
+
+test('with reduced motion, the held Scan button is lit at once, without a fill', async ({ page }) => {
   await page.locator('#source').fill('https://github.com/anthropics/skills');
   // The tab the hold would open, kept from the network.
   await page.context().route('https://github.com/**', (route) => route.fulfill({ body: '' }));
@@ -291,7 +316,7 @@ test('while held, the Scan button fills up', async ({ page }) => {
   await button.hover();
   await page.mouse.down();
   await expect(button).toHaveClass(/holding/);
-  // The screenshot plays the fill to its end: the button as it is when the tab opens.
+  expect(await fill(page)).toEqual({ animation: 'none', transform: 'matrix(1, 0, 0, 1, 0, 0)' });
   await expect(page.locator('#scan-form')).toHaveScreenshot('scan-held.png');
   await page.mouse.up();
   await expect(button).not.toHaveClass(/holding/);
