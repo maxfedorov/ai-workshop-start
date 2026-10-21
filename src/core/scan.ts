@@ -81,13 +81,13 @@ function mergeCopies(entries: Entry[]): Copies[] {
 /**
  * The same place under two or more roots, not byte-identical, is still one skill: the alphabetically
  * first path, the other files as its drifted copies, each with how it differs; and a warning.
+ * A group of byte-identical files is at every place one of its files is at, so groups that share
+ * a place, directly or through another group, are one skill.
  */
 function mergeDrifted(merged: Copies[]): { skills: Skill[]; warnings: string[] } {
-  const places = new Map<string, Copies[]>();
-  for (const group of merged) places.set(group.primary.file.place, [...(places.get(group.primary.file.place) ?? []), group]);
   const skills: Skill[] = [];
   const warnings: string[] = [];
-  for (const groups of places.values()) {
+  for (const groups of joinedByPlace(merged)) {
     const [first, ...others] = [...groups].sort((a, b) => (a.primary.file.path < b.primary.file.path ? -1 : 1));
     const drifted = others
       .flatMap((group) => [group.primary, ...group.copies])
@@ -97,6 +97,24 @@ function mergeDrifted(merged: Copies[]): { skills: Skill[]; warnings: string[] }
     skills.push({ ...first.primary.skill, copies: first.copies.map((entry) => entry.file.path).sort(), drifted });
   }
   return { skills, warnings };
+}
+
+/** The groups, joined when any of their files share a place: each joined set in the order given. */
+function joinedByPlace(merged: Copies[]): Copies[][] {
+  // A union-find over the groups: each points towards the one that stands for its set.
+  const parent = merged.map((_, index) => index);
+  const find = (index: number): number => (parent[index] === index ? index : (parent[index] = find(parent[index])));
+  const atPlace = new Map<string, number>();
+  merged.forEach((group, index) => {
+    for (const entry of [group.primary, ...group.copies]) {
+      const other = atPlace.get(entry.file.place);
+      if (other === undefined) atPlace.set(entry.file.place, index);
+      else parent[find(index)] = find(other);
+    }
+  });
+  const sets = new Map<number, Copies[]>();
+  merged.forEach((group, index) => sets.set(find(index), [...(sets.get(find(index)) ?? []), group]));
+  return [...sets.values()];
 }
 
 /** How the drifted file differs from the skill's own, field by field; formatting alone when nothing else. */

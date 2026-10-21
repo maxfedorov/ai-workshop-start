@@ -110,6 +110,24 @@ test('how they differ: the name, removed and changed keys, removed lines; nothin
   );
 });
 
+test('a drifted pair in a module, one of them byte-identical to a copy elsewhere → still drifted', async (t) => {
+  const skill = (description: string) => `---\nname: x\ndescription: ${description}\n---\nbody\n`;
+  const root = directory(t, {
+    '.agents/skills/x/SKILL.md': skill('A'),
+    'module/.agents/skills/x/SKILL.md': skill('A'),
+    'module/.claude/skills/x/SKILL.md': skill('B'),
+  });
+  const scanned = await atlas(['scan', root]);
+  assert.equal(scanned.code, 0, scanned.stderr);
+  assert.deepEqual(scanned.stdout.split('\n').filter((line) => !line.startsWith('  file:')), [
+    `${scanned.stdout.split(' · ')[0]} · 1 skill`,
+    'x — A',
+    '  also in module/.agents/skills/x/SKILL.md',
+    '  drifted: module/.claude/skills/x/SKILL.md (description differs)',
+  ]);
+  assert.equal(scanned.stderr, 'warning: .agents/skills/x/SKILL.md: drifted from module/.claude/skills/x/SKILL.md');
+});
+
 const DRIFT_COMMIT = '0c1d2e3f405162738495a6b7c8d9e0f1a2b3c4d5';
 
 /** JetBrains/drift: commits in .agents and .claude, edited apart. */
