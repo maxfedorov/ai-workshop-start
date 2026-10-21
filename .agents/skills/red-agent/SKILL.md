@@ -100,12 +100,21 @@ For each confirmed, not-yet-reported bug:
 
    Look at the frames it prints before moving on: they must show the actual bug (the wrong list,
    the console error overlay if visible, the blank panel), not just the page loading.
-3. Attach the video to an issue the same way [issue-to-pr](../issue-to-pr/SKILL.md) attaches one
+3. Attach the video to the issue the same way [issue-to-pr](../issue-to-pr/SKILL.md) attaches one
    to a PR — the script is generic over what it's keyed by:
 
    ```sh
    .agents/skills/issue-to-pr/attach-demo.sh /tmp/bug-<n>-<short-slug>-demo.mp4 bug-<n>-<short-slug> > demo.md
    ```
+
+   The GIF it prints Markdown for is **mandatory in the issue**, not optional: §4 below puts
+   `demo.md`'s contents straight into the body you file in §5, so the GIF shows inline in the
+   issue description, right where the bug is described. If `attach-demo.sh` fails (the `demos`
+   branch push rejected, no video produced, etc.), don't file the issue without a GIF and move
+   on — file it with what you have, then `gh issue comment` the same `demo.md` content (or the
+   reason you couldn't produce one, e.g. ffmpeg/recording failed) onto it immediately after, so
+   the GIF (or a clear reason for its absence) still ends up on the issue, just as a comment
+   instead of in the description.
 4. Write `bug.md`:
 
    ```markdown
