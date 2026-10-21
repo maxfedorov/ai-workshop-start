@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { AtlasError } from '../core/errors.ts';
-import { firstSentence, skillLink } from '../core/model.ts';
+import { organizationScanJson, scanJson } from '../core/json.ts';
+import { firstSentence } from '../core/model.ts';
 import { parseSkill } from '../core/parse.ts';
 import { isOrganization, scan, scanOrganization, type OrganizationSource, type ScanResult, type Source } from '../core/scan.ts';
 import { renderMarkdown } from './markdown.ts';
@@ -76,7 +77,7 @@ async function scanAnswer(requested: string | null, options: WebOptions): Promis
   try {
     const opened = await options.open(source);
     // An organization is shown as it is scanned: its repositories and their numbers of skills.
-    if (isOrganization(opened)) return [200, json({ source, ...(await scanOrganization(opened)) })];
+    if (isOrganization(opened)) return [200, json(organizationScanJson(source, await scanOrganization(opened)))];
     return [200, json(view(source, await scan(opened)))];
   } catch (error) {
     if (!(error instanceof AtlasError)) throw error;
@@ -84,27 +85,22 @@ async function scanAnswer(requested: string | null, options: WebOptions): Promis
   }
 }
 
-/** What the page shows: the scan, with each SKILL.md's front matter and body ready to display. */
-export function view(source: string, { repository, skills, warnings }: ScanResult) {
+/** What the page shows: the scan as JSON, with each SKILL.md's front matter and body ready to display. */
+export function view(source: string, result: ScanResult) {
+  const scanned = scanJson(source, result);
   return {
-    source,
-    repository,
-    warnings,
-    skills: skills.map((skill) => {
-      const link = skillLink(repository, skill);
-      const parsed = parseSkill(skill.content);
+    ...scanned,
+    repository: result.repository,
+    skills: scanned.skills.map((skill, index) => {
+      const { content } = result.skills[index];
+      const parsed = parseSkill(content);
       return {
-        id: skill.id,
-        name: skill.name,
-        description: skill.description,
+        ...skill,
         summary: firstSentence(skill.description),
-        path: skill.path,
-        link,
-        copies: skill.copies,
         properties: Object.entries(parsed.properties).map(([key, value]) => [key, display(value)]),
         warning: parsed.warning,
-        html: renderMarkdown(parsed.body, link),
-        content: skill.content,
+        html: renderMarkdown(parsed.body, skill.link),
+        content,
       };
     }),
   };

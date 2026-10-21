@@ -1,6 +1,7 @@
 // The skill-atlas commands. The same code serves the Node CLI and the browser
 // terminal: everything that differs between them comes in through the context.
 import { AtlasError } from './core/errors.ts';
+import { organizationScanJson, scanJson } from './core/json.ts';
 import { firstSentence, skillLink, type Repository, type Skill } from './core/model.ts';
 import { isOrganization, scan, scanOrganization, type OrganizationScanResult, type OrganizationSource, type Source } from './core/scan.ts';
 
@@ -25,6 +26,7 @@ const usage = `Usage: skill-atlas <command>
 
   scan <GitHub URL | directory>   find every SKILL.md in a repository and print it;
                                   for an organization, its repositories with skills
+        [--json]                  the same, as one JSON object, for scripts
   serve [GitHub URL | directory]  the same, as a page in the browser
         [--port 3000] [--host 127.0.0.1]
   help                            show this help`;
@@ -45,17 +47,25 @@ export async function run(args: string[], context: Context): Promise<number> {
   }
 }
 
+const scanUsage = 'Usage: skill-atlas scan [--json] <GitHub URL | directory>';
+
 async function scanCommand(args: string[], context: Context) {
-  if (args.length !== 1) throw new AtlasError('Usage: skill-atlas scan <GitHub URL | directory>');
-  const source = await context.open(args[0]);
+  const sources = args.filter((arg) => arg !== '--json');
+  const flags = args.length - sources.length;
+  if (sources.length !== 1 || sources[0].startsWith('--') || flags > 1) throw new AtlasError(scanUsage);
+  const asJson = flags === 1;
+  const [input] = sources;
+  const source = await context.open(input);
   let warnings: string[];
   if (isOrganization(source)) {
     const result = await scanOrganization(source);
-    printOrganization(result, context);
+    if (asJson) printJson(organizationScanJson(input, result), context);
+    else printOrganization(result, context);
     warnings = result.warnings;
   } else {
     const result = await scan(source);
-    printRepository(result.repository, result.skills, context);
+    if (asJson) printJson(scanJson(input, result), context);
+    else printRepository(result.repository, result.skills, context);
     warnings = result.warnings;
   }
   for (const warning of warnings) context.error(`warning: ${warning}`);
@@ -105,6 +115,11 @@ function printOrganization({ organization, repositories }: OrganizationScanResul
     print(`${repository.id} · ${count(repository.skills, 'skill', 'skills')}`);
     print(`  ${repository.url}`);
   }
+}
+
+/** One JSON object, indented for a reader; `jq` reads it either way. */
+function printJson(value: unknown, { print }: Context) {
+  print(JSON.stringify(value, null, 2));
 }
 
 function count(n: number, one: string, many: string): string {
