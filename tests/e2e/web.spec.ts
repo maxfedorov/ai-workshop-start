@@ -141,3 +141,39 @@ test('an organization has no map: ?view=map shows the organization', async ({ pa
   await expect(page).not.toHaveURL(/view=map/);
   expect(errors).toEqual([]);
 });
+
+// The state panel's children, one line each: an element's tag and class, or a text node's text.
+function stateChildren(page: import('@playwright/test').Page) {
+  return page.locator('#state-panel').evaluate((panel) => [...panel.childNodes].map((node) =>
+    node.nodeType === 1 ? `${node.nodeName}.${(node as typeof panel).className}` : `#text ${node.textContent}`));
+}
+
+test('a scan that fails: its message and the buttons, nothing else', async ({ page }) => {
+  await page.goto(`/?source=${encodeURIComponent('/nonexistent')}`);
+  await expect(page.locator('#state-panel .state-title')).toHaveText('Lost in space');
+  await expect(page.locator('#state-panel .state-text')).toHaveText('Not a GitHub URL or a readable directory: /nonexistent');
+  await expect(page.locator('#state-panel button')).toHaveText(['Try again', 'Scan something else']);
+  expect(await stateChildren(page)).toEqual(['DIV.error-mark', 'P.state-title', 'P.state-text', 'DIV.examples']);
+});
+
+test('a failure whose message does not name the source: the source under it', async ({ page }) => {
+  await page.route('**/api/scan?*', (route) => route.fulfill({ status: 422, json: { error: 'Something went wrong.' } }));
+  await page.goto(`/?source=${encodeURIComponent('/somewhere')}`);
+  await expect(page.locator('#state-panel .state-text')).toHaveText(['Something went wrong.', '/somewhere']);
+  expect(await stateChildren(page)).toEqual(['DIV.error-mark', 'P.state-title', 'P.state-text', 'P.state-text mono muted', 'DIV.examples']);
+});
+
+test('loading without a source: "Charting skills…", nothing else', async ({ page }) => {
+  // A scan that never answers, so the page stays loading.
+  await page.route('**/api/scan?*', () => {});
+  await page.goto('/');
+  await expect(page.locator('#state-panel .state-title')).toHaveText('Charting skills…');
+  expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title']);
+});
+
+test('loading a source: "Charting skills…" and the source', async ({ page }) => {
+  await page.route('**/api/scan?*', () => {});
+  await page.goto(`/?source=${encodeURIComponent('/somewhere')}`);
+  await expect(page.locator('#state-panel .state-text')).toHaveText('/somewhere');
+  expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title', 'P.state-text mono']);
+});
