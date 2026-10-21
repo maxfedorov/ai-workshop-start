@@ -5,7 +5,7 @@ A local page over the same scan; *nothing is stored*.
 - The **repository**: its link, and the scanned commit
 - The **skills**: name, first sentence and path, *filtered as you type*; see [Filter](#filter)
 - The selected skill's **SKILL.md**: *rendered*, or its *source*; its link, path, copies and front matter
-- Another repository: scanned from the page
+- Another repository: scanned from the page; its field has a button that *clears* it, see [Scan field](#scan-field)
 - An **organization**: how many repositories, how many with skills; each repository and its
   number of skills, *the ones with skills first*, filtered as you type: the [Filter](#filter),
   with the repository's name as its name and `owner/name` as its path; with a filter, the ones
@@ -26,6 +26,12 @@ A local page over the same scan; *nothing is stored*.
 - The matches are *marked*, only in the fields they were searched in; exclusions are not
 - No skill matches → "No skill matches the filter." and a button that *clears* it
 - In the URL as `?q=…`; typing *replaces* the history entry, it adds none
+## Scan field
+- Holds text → a **×** button at its end, labelled *Clear the scan URL*; empty → no button
+- Clicked → the field is *empty* and keeps the *focus*, ready to type
+- Clearing *scans nothing*: the scan on screen, the address and the history stay as they were
+- Typed, then cleared by hand → the button goes; typed again → it comes back
+- After a scan the field holds its source → the button shows
 ## Details
 - `GET /api/scan?source=…`: the scan as JSON; without `source`, the one `serve` was given
 - An organization's JSON: `organization`, its `repositories`, each with `skills`, a number

@@ -43,7 +43,10 @@
     <form class="scan-form" id="scan-form" role="search">
       <label class="visually-hidden" for="source">GitHub URL or local directory</label>
       <svg class="scan-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="source" name="source" type="text" placeholder="https://github.com/owner/repo  or  /path/to/checkout" autocomplete="off" spellcheck="false">
+      <span class="scan-field">
+        <input id="source" name="source" type="text" placeholder="https://github.com/owner/repo  or  /path/to/checkout" autocomplete="off" spellcheck="false">
+        <button type="button" class="scan-clear" id="scan-clear" aria-label="Clear the scan URL" title="Clear the scan URL"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </span>
       <button type="submit" class="button primary">Scan</button>
     </form>
     <div class="repo" id="repo"></div>

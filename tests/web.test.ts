@@ -111,6 +111,15 @@ test('the page: its own files only, and nothing but its own script may run', asy
   assert.equal((await fetch(`${base}/api/scan`, { method: 'POST' })).status, 405);
 });
 
+test('the scan field: a button that clears it, after the field, outside the form\'s submit', async (t) => {
+  const html = await (await fetch(await server(t, FIXTURE))).text();
+  const field = /<input id="source"[^>]*>\s*<button ([^>]*)>/.exec(html);
+  assert.ok(field, 'a button right after the scan field');
+  assert.match(field[1], /type="button"/);
+  assert.match(field[1], /aria-label="Clear the scan URL"/);
+  assert.match(html, /<input id="source"[^>]*placeholder="[^"]+"/, 'a placeholder, which hides the button while the field is empty');
+});
+
 test('Markdown is escaped first: no HTML from a repository reaches the page; links resolve against the link', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'skill-atlas-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));

@@ -206,7 +206,30 @@ input[type='text'], input[type='search'] {
 }
 input::placeholder { color: var(--faint); }
 input:focus { outline: none; border-color: var(--accent-strong); box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25); }
-#source { padding-left: 36px; font-family: var(--mono); font-size: 13px; }
+#source { padding-left: 36px; padding-right: 36px; font-family: var(--mono); font-size: 13px; }
+/* The field and its clear button; the button shows only while the field holds text. */
+.scan-field { position: relative; flex: 1; display: flex; }
+.scan-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  transform: translateY(-50%);
+  color: var(--faint);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+.scan-clear:hover, .scan-clear:focus-visible { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.scan-clear:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 0; }
+.scan-clear svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+#source:placeholder-shown + .scan-clear { display: none; }
 
 .repo {
   display: flex;

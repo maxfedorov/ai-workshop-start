@@ -34,3 +34,44 @@ test("opening a skill renders its SKILL.md", async ({ page }) => {
   await expect(page.locator('#detail')).toContainText('Code style');
   await expect(page.locator('#detail')).toHaveScreenshot('skill-detail.png');
 });
+
+test.describe('the scan field’s clear button', () => {
+  test('after a scan the field holds its source, so the button shows; a click empties the field and keeps the focus, scanning nothing', async ({ page }) => {
+    const clear = page.getByRole('button', { name: 'Clear the scan URL' });
+    await expect(page.locator('#source')).toHaveValue('./fixture');
+    await expect(clear).toBeVisible();
+    await expect(page.locator('.scan-form')).toHaveScreenshot('scan-field-clear.png');
+
+    const address = page.url();
+    const length = await page.evaluate('history.length');
+    const scans: string[] = [];
+    page.on('request', (request) => { if (request.url().includes('/api/scan')) scans.push(request.url()); });
+    await clear.click();
+    await expect(page.locator('#source')).toHaveValue('');
+    await expect(page.locator('#source')).toBeFocused();
+    await expect(clear).toBeHidden();
+    expect(page.url()).toBe(address);
+    expect(await page.evaluate('history.length')).toBe(length);
+    expect(scans).toEqual([]);
+    await expect(page.locator('#skill-list li')).toHaveCount(4);
+  });
+
+  test('empty → no button; typed → it comes back; cleared by hand → it goes', async ({ page }) => {
+    const source = page.locator('#source');
+    const clear = page.getByRole('button', { name: 'Clear the scan URL' });
+    await source.fill('');
+    await expect(clear).toBeHidden();
+    await source.pressSequentially('https://github.com/owner/repo');
+    await expect(clear).toBeVisible();
+    await source.fill('');
+    await expect(clear).toBeHidden();
+  });
+
+  test('after clearing, what is typed next scans as usual', async ({ page }) => {
+    await page.getByRole('button', { name: 'Clear the scan URL' }).click();
+    await page.keyboard.type('./fixture');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#skill-list li')).toHaveCount(4);
+    await expect(page.locator('#source')).toHaveValue('./fixture');
+  });
+});

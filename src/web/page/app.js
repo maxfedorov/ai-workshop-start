@@ -11,6 +11,7 @@ const $ = (id) => document.getElementById(id);
 const page = {
   source: $('source'),
   form: $('scan-form'),
+  clearSource: $('scan-clear'),
   repo: $('repo'),
   state: $('state-panel'),
   filter: $('filter'),
@@ -456,6 +457,12 @@ page.form.addEventListener('submit', (event) => {
   organizations.delete(source); // asked for again: scanned again
   document.body.dataset.view = 'list';
   go({ source });
+});
+
+// Clearing the field only readies it for another source: the scan on screen and the address stay.
+page.clearSource.addEventListener('click', () => {
+  page.source.value = '';
+  page.source.focus();
 });
 
 page.filter.addEventListener('input', () => {
