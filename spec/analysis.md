@@ -1,10 +1,23 @@
 # Repository analysis
 ## Input
 A **GitHub repository** URL, a local directory, or a **GitHub organization**; see [Organization](#organization)
+## Branch, tag or commit
+A repository URL can name *what* to scan in it, as GitHub's own pages do: `…/tree/<ref>`,
+`…/tree/<ref>/<path>`, `…/commit/<sha>` or `…/blob/<ref>/<path>`. Without one, the default branch.
+- The skills as they are *at that ref*; their links pin its *commit*
+- The **path** is ignored: the *whole* repository is scanned at that ref
+- A ref with a `/`, `feature/x` → the *longest* prefix of what follows `tree/` or `blob/` that
+  names a commit, as GitHub resolves it; a prefix up to a segment that starts with `.` is never a ref
+- A **pinned link** Skill Atlas printed, `…/blob/<commit>/…/SKILL.md` → the repository at that commit
+- `…/tree/<default branch>` → the same as the repository URL
+- **Listing**: code search only knows the default branch → any other ref is listed from the
+  *tree*, even with `GITHUB_TOKEN`; a tree too large → the same fallback and a *warning*
+- Unknown ref → `Branch, tag or commit not found: <ref> in <owner>/<repo>`, exit code 1
 ## Output
 Every `SKILL.md`: **name**, **description**, **link**
 ## Architecture
 Core: fetch → find → parse. CLI and web view: *thin clients*.
+Repository: id, link, the scanned *commit*, and the *ref* it was asked at (empty for the default branch)
 Skill: id = `repo:path`, name, description, commit, the SKILL.md's *content*
 ## Details
 - **GitHub API**, no clone; *under 5 s* for intellij-community

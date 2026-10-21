@@ -52,7 +52,7 @@ test('the scan as JSON: the repository, each skill with its link, front matter, 
   const { status, body } = await scanned(base);
   assert.equal(status, 200);
   assert.equal(body.source, FIXTURE);
-  assert.deepEqual(body.repository, { id: 'fixture', organization: 'local', name: 'fixture', url: pathToFileURL(FIXTURE).href, commit: '' });
+  assert.deepEqual(body.repository, { id: 'fixture', organization: 'local', name: 'fixture', url: pathToFileURL(FIXTURE).href, commit: '', ref: '' });
   assert.deepEqual(body.skills.map((skill) => skill.name), ['code-style', 'commits', 'release-checklist', 'writing-lint-checks']);
 
   const commits = body.skills[1];

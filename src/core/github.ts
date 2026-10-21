@@ -14,13 +14,34 @@ export type GitHubOptions = {
 const API = 'https://api.github.com';
 const RAW = 'https://raw.githubusercontent.com';
 
-/** `https://github.com/owner/repo`, with or without the scheme, a trailing slash or `.git`. */
-export function parseGitHubUrl(input: string): { owner: string; repo: string } | undefined {
-  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/i.exec(input.trim());
-  return match ? { owner: match[1], repo: match[2] } : undefined;
+/** A repository, and the branch, tag or commit its URL may name. */
+export type GitHubUrl = {
+  owner: string;
+  repo: string;
+  /** What the ref may be, longest first: a branch name can hold a `/`. None for the default branch. */
+  refs: string[];
+};
+
+/**
+ * `https://github.com/owner/repo`, with or without the scheme, a trailing slash or `.git`; or, as
+ * GitHub's pages link it, at a ref: `…/tree/<ref>[/<path>]`, `…/commit/<sha>` or `…/blob/<ref>/<path>`.
+ */
+export function parseGitHubUrl(input: string): GitHubUrl | undefined {
+  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:(?:\.git)?|\/(tree|commit|blob)\/(\S+?))\/?$/i.exec(input.trim());
+  if (!match) return undefined;
+  const [, owner, repo, kind, rest] = match;
+  if (!kind) return { owner, repo, refs: [] };
+  const segments = rest.split('/').filter(Boolean).map(decode);
+  if (kind === 'commit' && segments.length !== 1) return undefined;
+  // A blob's path names a file, so at least its last segment is not the ref. No segment of a ref
+  // starts with a dot, so neither does any of what is left after one.
+  const dot = segments.findIndex((segment) => segment.startsWith('.'));
+  const end = Math.min(kind === 'blob' ? segments.length - 1 : segments.length, dot === -1 ? Infinity : dot);
+  const refs = segments.slice(0, end).map((_, index) => segments.slice(0, end - index).join('/'));
+  return refs.length > 0 ? { owner, repo, refs } : undefined;
 }
 
-/** Resolves the default branch to a commit and lists the files that may be skills. */
+/** Resolves the ref the URL names, or the default branch, to a commit, and lists the files that may be skills. */
 export async function openGitHub(input: string, options: GitHubOptions): Promise<Source> {
   const name = parseGitHubUrl(input);
   if (!name) throw new AtlasError(`Not a GitHub repository URL: ${input}`);
@@ -29,26 +50,41 @@ export async function openGitHub(input: string, options: GitHubOptions): Promise
     `${API}/repos/${name.owner}/${name.repo}`,
     `Repository not found: https://github.com/${name.owner}/${name.repo}`,
   );
-  return repositorySource(github, info, (sha, warnings) =>
-    options.token ? searchPaths(github, info.full_name) : treePaths(github, info.full_name, sha, warnings),
+  const given = name.refs.length > 0 ? await resolveRef(github, info.full_name, name.refs) : '';
+  const ref = given === info.default_branch ? '' : given;
+  // Code search only knows the default branch.
+  const search = options.token && !ref;
+  return repositorySource(github, info, ref, (sha, warnings) =>
+    search
+      ? searchPaths(github, info.full_name)
+      : treePaths(github, info.full_name, sha, warnings, ref ? 'code search covers only the default branch' : 'GITHUB_TOKEN searches everywhere'),
   );
 }
 
 type RepositoryInfo = { full_name: string; default_branch: string };
 
-/** The repository at its default branch's commit, with the files `list` finds there. */
+/** The first of the refs that names a commit, tried longest first, as GitHub resolves its own links. */
+async function resolveRef(github: Client, id: string, refs: string[]): Promise<string> {
+  for (const ref of refs) {
+    if (await github.find(`${API}/repos/${id}/commits/${encodePath(ref)}`)) return ref;
+  }
+  throw new AtlasError(`Branch, tag or commit not found: ${refs[0]} in ${id}`);
+}
+
+/** The repository at the ref's commit, or its default branch's, with the files `list` finds there. */
 async function repositorySource(
   github: Client,
   info: RepositoryInfo,
+  ref: string,
   list: (sha: string, warnings: string[]) => Promise<string[]>,
 ): Promise<Source> {
   const id = info.full_name;
-  const { sha } = await github.json<{ sha: string }>(`${API}/repos/${id}/commits/${encodePath(info.default_branch)}`);
+  const { sha } = await github.json<{ sha: string }>(`${API}/repos/${id}/commits/${encodePath(ref || info.default_branch)}`);
   const warnings: string[] = [];
   const paths = await list(sha, warnings);
   const [organization, repo] = id.split('/');
   return {
-    repository: { id, organization, name: repo, url: `https://github.com/${id}`, commit: sha },
+    repository: { id, organization, name: repo, url: `https://github.com/${id}`, commit: sha, ref },
     paths,
     warnings,
     read: (path) => github.raw(`${RAW}/${id}/${sha}/${encodePath(path)}`),
@@ -87,7 +123,7 @@ export async function openGitHubOrganization(input: string, options: GitHubOptio
         id: info.full_name,
         url: `https://github.com/${info.full_name}`,
         paths,
-        open: () => repositorySource(github, info, async () => paths),
+        open: () => repositorySource(github, info, '', async () => paths),
       };
     }),
     warnings,
@@ -142,10 +178,10 @@ async function searchPaths(github: Client, id: string): Promise<string[]> {
 type Tree = { truncated: boolean; tree: { path: string; mode: string; type: string; sha: string }[] };
 
 /** The whole tree at once, or only the skill roots when it is too large for one answer. */
-async function treePaths(github: Client, id: string, sha: string, warnings: string[]): Promise<string[]> {
+async function treePaths(github: Client, id: string, sha: string, warnings: string[], hint: string): Promise<string[]> {
   const tree = await github.json<Tree>(`${API}/repos/${id}/git/trees/${sha}?recursive=1`);
   if (!tree.truncated) return files(tree);
-  warnings.push(`the tree is too large to list at once; looked only in ${SKILL_ROOTS.join(', ')} (GITHUB_TOKEN searches everywhere)`);
+  warnings.push(`the tree is too large to list at once; looked only in ${SKILL_ROOTS.join(', ')} (${hint})`);
   const paths: string[] = [];
   for (const root of SKILL_ROOTS) {
     const rootSha = await directory(github, id, sha, root);
@@ -175,10 +211,12 @@ function files(tree: Tree): string[] {
 
 type Client = ReturnType<typeof client>;
 
+type Answer = { status: number; body: unknown };
+
 function client({ fetch, token }: GitHubOptions) {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const answers = new Map<string, Promise<unknown>>(); // the root tree is asked for once per skill root
+  const answers = new Map<string, Promise<Answer>>(); // the root tree is asked for once per skill root
 
   async function get(url: string, init?: { headers: Record<string, string> }): Promise<Response> {
     try {
@@ -188,25 +226,41 @@ function client({ fetch, token }: GitHubOptions) {
     }
   }
 
-  async function request(url: string, notFound: string): Promise<unknown> {
+  async function request(url: string): Promise<Answer> {
     const response = await get(url, { headers });
-    if (response.ok) return response.json();
-    const body: unknown = await response.json().catch(() => undefined);
+    if (response.ok) return { status: response.status, body: await response.json() };
+    return { status: response.status, body: await response.json().catch(() => undefined) };
+  }
+
+  function answer(url: string): Promise<Answer> {
+    if (!answers.has(url)) answers.set(url, request(url));
+    return answers.get(url)!;
+  }
+
+  function failure(url: string, { status, body }: Answer, notFound: string): AtlasError {
     const message = (body as { message?: unknown } | undefined)?.message;
     const text = typeof message === 'string' ? message : '';
-    if (response.status === 404) throw new AtlasError(notFound);
-    if ((response.status === 403 || response.status === 429) && /rate limit/i.test(text)) {
-      throw new AtlasError(`GitHub rate limit reached; ${token ? 'try again in a minute' : 'set GITHUB_TOKEN'}`);
+    if (status === 404) return new AtlasError(notFound);
+    if ((status === 403 || status === 429) && /rate limit/i.test(text)) {
+      return new AtlasError(`GitHub rate limit reached; ${token ? 'try again in a minute' : 'set GITHUB_TOKEN'}`);
     }
-    if (response.status === 401) throw new AtlasError('GitHub rejected the token in GITHUB_TOKEN');
-    throw new AtlasError(`GitHub answered ${response.status} for ${url}${text && `: ${text}`}`);
+    if (status === 401) return new AtlasError('GitHub rejected the token in GITHUB_TOKEN');
+    return new AtlasError(`GitHub answered ${status} for ${url}${text && `: ${text}`}`);
+  }
+
+  /** A GitHub API answer; `notFound` explains a 404. */
+  async function json<T>(url: string, notFound = `Not found on GitHub: ${url}`): Promise<T> {
+    const answered = await answer(url);
+    if (answered.status >= 200 && answered.status < 300) return answered.body as T;
+    throw failure(url, answered, notFound);
   }
 
   return {
-    /** A GitHub API answer; `notFound` explains a 404. */
-    json<T>(url: string, notFound = `Not found on GitHub: ${url}`): Promise<T> {
-      if (!answers.has(url)) answers.set(url, request(url, notFound));
-      return answers.get(url) as Promise<T>;
+    json,
+    /** A GitHub API answer, or undefined when there is none: 404, or 422 for a ref that names no commit. */
+    async find<T>(url: string): Promise<T | undefined> {
+      const { status } = await answer(url);
+      return status === 404 || status === 422 ? undefined : json<T>(url);
     },
     /** A file's bytes at the scanned commit, or undefined if it is not there. */
     async raw(url: string): Promise<Uint8Array | undefined> {
@@ -216,6 +270,15 @@ function client({ fetch, token }: GitHubOptions) {
       return new Uint8Array(await response.arrayBuffer());
     },
   };
+}
+
+/** A segment of a URL as GitHub links it, percent-encoded or not. */
+function decode(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 function encodePath(path: string): string {

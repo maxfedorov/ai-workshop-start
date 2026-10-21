@@ -172,6 +172,9 @@ function renderRepository() {
     local
       ? h('span', { class: 'repo-name', title: place }, repository.id)
       : h('a', { class: 'repo-name', href: repository.url, target: '_blank', rel: 'noopener noreferrer', title: 'Open the repository on GitHub' }, `${repository.id} ↗`),
+    ...(repository.ref
+      ? [h('a', { class: 'ref mono', id: 'repo-ref', href: `${repository.url}/tree/${repository.ref.split('/').map(encodeURIComponent).join('/')}`, target: '_blank', rel: 'noopener noreferrer', title: `Scanned at ${repository.ref}, not the default branch` }, repository.ref)]
+      : []),
     local
       ? h('button', { class: 'commit', type: 'button', title: 'Copy the directory', onclick: () => copy(place, 'Directory copied') }, 'local')
       : h('a', { class: 'commit mono', href: `${repository.url}/tree/${repository.commit}`, target: '_blank', rel: 'noopener noreferrer', title: `Scanned at ${repository.commit}` }, repository.commit.slice(0, 7)),

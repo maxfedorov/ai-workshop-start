@@ -18,7 +18,7 @@ export async function openDirectory(input: string): Promise<Source> {
     throw new AtlasError(`Not a GitHub URL or a readable directory: ${input}`);
   }
   return {
-    repository: { id: name, organization: 'local', name, url: pathToFileURL(root).href, commit: '' },
+    repository: { id: name, organization: 'local', name, url: pathToFileURL(root).href, commit: '', ref: '' },
     paths,
     warnings: [],
     read: (path) => readFile(join(root, path)).then((bytes) => new Uint8Array(bytes), () => undefined),

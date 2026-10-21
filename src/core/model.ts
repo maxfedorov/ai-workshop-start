@@ -8,6 +8,8 @@ export type Repository = {
   url: string;
   /** The scanned commit; empty for a local directory. */
   commit: string;
+  /** The branch, tag or commit the scan was asked at, as given; empty for the default branch or a local directory. */
+  ref: string;
 };
 
 /** A scanned GitHub organization, or a user: the owner of repositories. */

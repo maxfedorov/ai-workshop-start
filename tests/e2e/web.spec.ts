@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import type { Source } from '../../src/core/scan.ts';
 
 test.use({ reducedMotion: 'reduce' });
 
@@ -202,4 +203,37 @@ test('loading a source: "Charting skills…" and the source', async ({ page }) =
   await page.goto(`/?source=${encodeURIComponent('/somewhere')}`);
   await expect(page.locator('#state-panel .state-text')).toHaveText('/somewhere');
   expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title', 'P.state-text mono']);
+});
+
+// A branch of JetBrains/example, scanned by the real core over the recording in tests/helpers.ts:
+// the page asks the server, and the answer comes from the recording instead of live GitHub.
+const BRANCH = 'https://github.com/JetBrains/example/tree/feature/x';
+
+test("a repository scanned at a branch: its header shows the branch next to the commit, and the URL keeps it", async ({ page }) => {
+  const { open } = await import('../helpers.ts');
+  const { scan } = await import('../../src/core/scan.ts');
+  const { view } = await import('../../src/web/server.ts');
+  await page.route('**/api/scan?*', async (route) => {
+    const source = new URL(route.request().url()).searchParams.get('source') ?? '';
+    const opened = await open(source);
+    await route.fulfill({ json: view(source, await scan(opened as Source)) });
+  });
+  await page.goto(`/?source=${encodeURIComponent(BRANCH)}`);
+  await expect(page.locator('#repo-ref')).toHaveText('feature/x');
+  await expect(page.locator('#repo-ref')).toHaveAttribute('href', 'https://github.com/JetBrains/example/tree/feature/x');
+  await expect(page.locator('#repo .commit')).toHaveText('b7e1c9d');
+  await expect(page.locator('#source')).toHaveValue(BRANCH);
+  await expect(page.locator('#skill-list .skill-name')).toHaveText(['commits', 'review']);
+  await expect(page.locator('.topbar')).toHaveScreenshot('repository-at-ref.png');
+
+  await page.locator('#skill-list .skill-name', { hasText: 'review' }).click();
+  await page.reload();
+  await expect(page).toHaveURL(/[?&]source=https%3A%2F%2Fgithub\.com%2FJetBrains%2Fexample%2Ftree%2Ffeature%2Fx(&|$)/);
+  await expect(page.locator('#repo-ref')).toHaveText('feature/x');
+  await expect(page.locator('#detail .skill-title')).toHaveText('review');
+});
+
+test('a source without a ref: no ref in the header', async ({ page }) => {
+  await expect(page.locator('#repo .commit')).toHaveText('local');
+  await expect(page.locator('#repo-ref')).toHaveCount(0);
 });
