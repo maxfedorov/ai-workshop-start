@@ -163,6 +163,15 @@ test('a failure whose message does not name the source: the source under it', as
   expect(await stateChildren(page)).toEqual(['DIV.error-mark', 'P.state-title', 'P.state-text', 'P.state-text mono muted', 'DIV.examples']);
 });
 
+test('a failure without a source: its message and Scan something else, no Try again', async ({ page }) => {
+  await page.route('**/api/scan?*', (route) => route.abort());
+  await page.goto('/');
+  await expect(page.locator('#state-panel .state-title')).toHaveText('Lost in space');
+  await expect(page.locator('#state-panel .state-text')).toHaveText('Cannot reach the Skill Atlas server. Is it still running?');
+  await expect(page.locator('#state-panel button')).toHaveText(['Scan something else']);
+  expect(await stateChildren(page)).toEqual(['DIV.error-mark', 'P.state-title', 'P.state-text', 'DIV.examples']);
+});
+
 test('loading without a source: "Charting skills…", nothing else', async ({ page }) => {
   // A scan that never answers, so the page stays loading.
   await page.route('**/api/scan?*', () => {});
