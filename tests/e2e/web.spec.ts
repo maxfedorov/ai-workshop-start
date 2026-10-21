@@ -203,3 +203,190 @@ test('loading a source: "Charting skills…" and the source', async ({ page }) =
   await expect(page.locator('#state-panel .state-text')).toHaveText('/somewhere');
   expect(await stateChildren(page)).toEqual(['DIV.orbit', 'P.state-title', 'P.state-text mono']);
 });
+
+// Holding Scan: the field's link in a new tab instead of a scan. A link to this same server, so
+// the new tab loads without the network.
+const HOLD = 3000;
+
+/** Presses Scan with the mouse, holds it `ms`, and lets go: on the button, or off it. */
+async function holdScan(page: import('@playwright/test').Page, ms: number, { off = false } = {}) {
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(ms);
+  if (off) await page.locator('#filter').hover();
+  await page.mouse.up();
+}
+
+/** The /api/scan requests the page makes from now on. */
+function scansFrom(page: import('@playwright/test').Page) {
+  const scans: string[] = [];
+  page.on('request', (request) => { if (request.url().includes('/api/scan')) scans.push(request.url()); });
+  return scans;
+}
+
+test('holding Scan 3 seconds opens the link in a new tab; the page stays, unscanned', async ({ page, baseURL }) => {
+  const link = `${baseURL}/?source=${encodeURIComponent(SKILLS_MAP)}`;
+  const before = page.url();
+  await page.locator('#source').fill(`  ${link}  `);
+  const scans = scansFrom(page);
+  const opened = page.context().waitForEvent('page');
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await expect(button).toHaveClass(/holding/);
+  const tab = await opened;
+  await expect(button).not.toHaveClass(/holding/);
+  await page.mouse.up();
+  await tab.waitForLoadState();
+  expect(tab.url()).toBe(link);
+  await expect(tab.locator('#skill-list li').first()).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(before);
+  expect(scans).toEqual([]);
+  await expect(page.locator('#source')).toHaveValue(`  ${link}  `);
+  await expect(page.locator('#skill-list .skill-name').first()).toHaveText('code-style');
+});
+
+test('a shorter press on Scan scans, as before; moved off the button sooner → nothing', async ({ page }) => {
+  const tabs: unknown[] = [];
+  page.context().on('page', (tab) => tabs.push(tab));
+  await page.locator('#source').fill(SKILLS_MAP);
+  const before = page.url();
+  const scans = scansFrom(page);
+  await holdScan(page, HOLD - 1000, { off: true });
+  await expect(page.locator('#scan-form button[type=submit]')).not.toHaveClass(/holding/);
+  await page.waitForTimeout(1500);
+  expect(scans).toEqual([]);
+  expect(page.url()).toBe(before);
+
+  await holdScan(page, 300);
+  await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe(SKILLS_MAP);
+  await expect(page.locator('#skill-list .skill-name', { hasText: 'release-notes' })).toBeVisible();
+  expect(scans).toHaveLength(1);
+  expect(tabs).toEqual([]);
+});
+
+test('holding Scan over a local directory or an empty field: nothing happens', async ({ page }) => {
+  const tabs: unknown[] = [];
+  page.context().on('page', (tab) => tabs.push(tab));
+  const before = page.url();
+  const scans = scansFrom(page);
+  for (const text of [SKILLS_MAP, '']) {
+    await page.locator('#source').fill(text);
+    await holdScan(page, HOLD + 300);
+    await page.waitForTimeout(300);
+    expect(page.url()).toBe(before);
+    await expect(page.locator('#toast')).not.toHaveClass(/shown/);
+  }
+  expect(scans).toEqual([]);
+  expect(tabs).toEqual([]);
+});
+
+/** The Scan button's fill: its animation and how far across it is. */
+function fill(page: import('@playwright/test').Page) {
+  return page.locator('#scan-form button[type=submit]').evaluate((button) => {
+    const style = button.ownerDocument.defaultView!.getComputedStyle(button, '::after');
+    return { animation: style.animationName, transform: style.transform };
+  });
+}
+
+test.describe('while held, the Scan button fills up', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('over the 3 seconds', async ({ page }) => {
+    await page.locator('#source').fill('https://github.com/anthropics/skills');
+    await page.context().route('https://github.com/**', (route) => route.fulfill({ body: '' }));
+    const button = page.locator('#scan-form button[type=submit]');
+    await button.hover();
+    await page.mouse.down();
+    await expect(button).toHaveClass(/holding/);
+    expect((await fill(page)).animation).toBe('hold-fill');
+    await page.mouse.up();
+    await expect(button).not.toHaveClass(/holding/);
+    expect(await fill(page)).toEqual({ animation: 'none', transform: 'matrix(0, 0, 0, 1, 0, 0)' });
+  });
+});
+
+test('with reduced motion, the held Scan button is lit at once, without a fill', async ({ page }) => {
+  await page.locator('#source').fill('https://github.com/anthropics/skills');
+  // The tab the hold would open, kept from the network.
+  await page.context().route('https://github.com/**', (route) => route.fulfill({ body: '' }));
+  const button = page.locator('#scan-form button[type=submit]');
+  await button.hover();
+  await page.mouse.down();
+  await expect(button).toHaveClass(/holding/);
+  expect(await fill(page)).toEqual({ animation: 'none', transform: 'matrix(1, 0, 0, 1, 0, 0)' });
+  await expect(page.locator('#scan-form')).toHaveScreenshot('scan-held.png');
+  await page.mouse.up();
+  await expect(button).not.toHaveClass(/holding/);
+});
+
+test.describe('holding Scan with a finger', () => {
+  test.use({ hasTouch: true });
+
+  /** A finger on the page, through the browser's own touch input: start, move, end. */
+  async function finger(page: import('@playwright/test').Page) {
+    const cdp = await page.context().newCDPSession(page);
+    const box = (await page.locator('#scan-form button[type=submit]').boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    return {
+      down: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] }),
+      moveOff: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: at.x, y: at.y + 300 }] }),
+      up: () => cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }),
+    };
+  }
+
+  test('held 3 seconds → the link opens in a new tab when the finger lifts; the page stays, unscanned', async ({ page, baseURL }) => {
+    const link = `${baseURL}/?source=${encodeURIComponent(SKILLS_MAP)}`;
+    const tabs: import('@playwright/test').Page[] = [];
+    page.context().on('page', (tab) => tabs.push(tab));
+    await page.locator('#source').fill(link);
+    const before = page.url();
+    const scans = scansFrom(page);
+    const touch = await finger(page);
+    await touch.down();
+    await page.waitForTimeout(HOLD + 300);
+    // A finger's tab waits for it to lift: only then may the page open one.
+    expect(tabs).toEqual([]);
+    const opened = page.context().waitForEvent('page');
+    await touch.up();
+    const tab = await opened;
+    await tab.waitForLoadState();
+    expect(tab.url()).toBe(link);
+    await page.waitForTimeout(300);
+    expect(scans).toEqual([]);
+    expect(page.url()).toBe(before);
+  });
+
+  test('a shorter touch scans, as before', async ({ page }) => {
+    await page.locator('#source').fill(SKILLS_MAP);
+    const touch = await finger(page);
+    await touch.down();
+    await page.waitForTimeout(300);
+    await touch.up();
+    await expect.poll(() => new URL(page.url()).searchParams.get('source')).toBe(SKILLS_MAP);
+    await expect(page.locator('#skill-list .skill-name', { hasText: 'release-notes' })).toBeVisible();
+  });
+
+  test('moved off the button sooner → nothing, even when let go after 3 seconds', async ({ page }) => {
+    const tabs: unknown[] = [];
+    page.context().on('page', (tab) => tabs.push(tab));
+    await page.locator('#source').fill('https://github.com/anthropics/skills');
+    const before = page.url();
+    const scans = scansFrom(page);
+    const touch = await finger(page);
+    await touch.down();
+    await expect(page.locator('#scan-form button[type=submit]')).toHaveClass(/holding/);
+    await page.waitForTimeout(500);
+    await touch.moveOff();
+    // Ended by the move, not by the 3 seconds running out.
+    await expect(page.locator('#scan-form button[type=submit]')).not.toHaveClass(/holding/, { timeout: 500 });
+    await page.waitForTimeout(HOLD);
+    await touch.up();
+    await page.waitForTimeout(500);
+    expect(tabs).toEqual([]);
+    expect(scans).toEqual([]);
+    expect(page.url()).toBe(before);
+  });
+});

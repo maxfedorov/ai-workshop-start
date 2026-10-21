@@ -7,6 +7,8 @@ A local page over the same scan; *nothing is stored*.
 - The selected skill's **SKILL.md**: *rendered*, or its *source*; its link, path, copies and front matter
 - The **skills map**: the skills *grouped by the words their names share*; see [Skills map](#skills-map)
 - Another repository: scanned from the page
+- **Holding** *Scan* for 3 seconds → the field's link opens in a *new tab*; *nothing* is scanned;
+  see [Holding Scan](#holding-scan)
 - An **organization**: how many repositories, how many with skills; each repository and its
   number of skills, *the ones with skills first*, filtered as you type: the [Filter](#filter),
   with the repository's name as its name and `owner/name` as its path; with a filter, the ones
@@ -31,6 +33,14 @@ A local page over the same scan; *nothing is stored*.
 - Words whose matches overlap, `co code` or `ode co` → marked as *one*, each word whole, in either order
 - No skill matches → "No skill matches the filter." and a button that *clears* it
 - In the URL as `?q=…`; typing *replaces* the history entry, it adds none
+## Holding Scan
+The field's link, opened in a new tab instead of scanned: *Scan* held down, with the mouse or a finger.
+- **Held** 3 seconds → the link opens in a *new tab*; the page stays as it was: no scan, no new address
+- A **shorter** press → a scan, as before; moved *off* the button sooner → nothing
+- **A web link** only: `http` or `https`, the field's text *trimmed*
+- Anything else, a local directory or an empty field → *nothing* happens: no tab, no scan, no message
+- While held, the button *fills up*; let go sooner → it empties
+- Reduced motion → no fill: the button is *lit* at once while held
 ## Skills map
 A repository's skills, grouped by the words their names share: opened from the
 repository's header, `Skills map`, in place of the selected skill.

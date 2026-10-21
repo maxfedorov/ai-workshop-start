@@ -24,3 +24,14 @@ export function addressOf(pathname, { source, skill, filter, view = '' }) {
   const search = query.toString();
   return `${pathname}${search ? `?${search}` : ''}`;
 }
+
+/** The field's text as a link to open in a new tab: http(s) only, else ''. */
+export function webLink(text) {
+  const trimmed = text.trim();
+  if (!/^https?:\/\/./i.test(trimmed)) return '';
+  try {
+    return new URL(trimmed).href;
+  } catch {
+    return '';
+  }
+}

@@ -3,16 +3,19 @@
 // repositories, each a link to its scan.
 // The address holds the state (?source=…&skill=…&view=map&q=…), so links, reloads and Back work.
 // Text from a repository goes in as text; the only HTML is the SKILL.md body the server rendered.
-import { addressOf, readAddress } from './address.js';
+import { addressOf, readAddress, webLink } from './address.js';
 import { filterRepositories, filterSkills, marked, markParts, parseFilter } from './filter.js';
 import { mapSkills, nameParts } from './map.js';
 
+/** How long Scan is held to open the field's link in a new tab instead. */
+const HOLD = 3000;
 const EXAMPLES = ['https://github.com/anthropics/skills', 'https://github.com/JetBrains/kotlin'];
 
 const $ = (id) => document.getElementById(id);
 const page = {
   source: $('source'),
   form: $('scan-form'),
+  scanButton: $('scan-form').querySelector('button[type=submit]'),
   repo: $('repo'),
   state: $('state-panel'),
   filter: $('filter'),
@@ -515,6 +518,48 @@ function move(step) {
   // Leaving the map keeps it in the history.
   choose(next, { replace: !mapView() });
 }
+
+// Holding Scan: the field's link in a new tab, and no scan. A mouse opens it once held, while the
+// press still counts as the user's; a finger, when it lets go, since only that counts.
+let holdTimer;
+let held = false;
+
+function endHold() {
+  clearTimeout(holdTimer);
+  page.scanButton.classList.remove('holding');
+}
+
+function openSource() {
+  const link = webLink(page.source.value);
+  if (link) window.open(link, '_blank', 'noopener,noreferrer');
+}
+
+page.scanButton.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0) return;
+  // A finger is captured by the button it touched, so it would never leave it: let it go.
+  page.scanButton.releasePointerCapture(event.pointerId);
+  held = false;
+  endHold();
+  page.scanButton.classList.add('holding');
+  holdTimer = setTimeout(() => {
+    held = true;
+    endHold();
+    if (event.pointerType === 'mouse') openSource();
+  }, HOLD);
+});
+page.scanButton.addEventListener('pointerup', (event) => {
+  if (held && event.pointerType !== 'mouse') openSource();
+  endHold();
+});
+page.scanButton.addEventListener('pointerleave', endHold);
+page.scanButton.addEventListener('pointercancel', endHold);
+// A finger held down would open the context menu instead.
+page.scanButton.addEventListener('contextmenu', (event) => event.preventDefault());
+page.scanButton.addEventListener('click', (event) => {
+  // Held: opened, or nothing to open; either way not scanned. A key's click (Enter) never is.
+  if (held && event.detail !== 0) event.preventDefault();
+  held = false;
+});
 
 page.form.addEventListener('submit', (event) => {
   event.preventDefault();
