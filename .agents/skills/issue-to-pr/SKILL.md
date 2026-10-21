@@ -179,9 +179,14 @@ gh pr create --base main --title '<what it adds, in your own words>' --body-file
 
 The title is yours, not copied from the issue, and in single quotes.
 
-Once it's created, post its URL with your Slack tool in the same **air-test-mfedorov** channel
-(id `C0CAFST6MQF`, **AI Workshop at JetBrains** workspace) used for §1a's clarifications — the
-same thread there if this run asked one, otherwise a new message.
+Once it's created, posting its URL to Slack is **mandatory**, not best-effort: the same
+**air-test-mfedorov** channel (id `C0CAFST6MQF`, **AI Workshop at JetBrains** workspace) used
+for §1a's clarifications — the same thread there if this run asked one, otherwise a new message.
+Post it with the `SLACK_BOT_TOKEN` in your environment.
+
+If you can't post it, don't just move on: say so in a comment on the issue, with the reason —
+and if the reason is the token, say plainly whether `SLACK_BOT_TOKEN` is even visible to you
+(set and non-empty, or missing) rather than guessing at the cause.
 
 `pr.md`:
 
