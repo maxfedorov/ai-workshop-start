@@ -6,6 +6,7 @@ A repository URL can name *what* to scan in it, as GitHub's own pages do: `…/t
 `…/tree/<ref>/<path>`, `…/commit/<sha>` or `…/blob/<ref>/<path>`. Without one, the default branch.
 - The skills as they are *at that ref*; their links pin its *commit*
 - The **path** is ignored: the *whole* repository is scanned at that ref
+- A **query** or a **fragment**, `?tab=readme-ov-file`, `#diff-…`, `#L5` → ignored, as the path is
 - A ref with a `/`, `feature/x` → the *longest* prefix of what follows `tree/` or `blob/` that
   names a commit, as GitHub resolves it; a prefix up to a segment that starts with `.` is never a ref
 - A **pinned link** Skill Atlas printed, `…/blob/<commit>/…/SKILL.md` → the repository at that commit

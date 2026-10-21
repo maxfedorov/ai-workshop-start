@@ -25,9 +25,10 @@ export type GitHubUrl = {
 /**
  * `https://github.com/owner/repo`, with or without the scheme, a trailing slash or `.git`; or, as
  * GitHub's pages link it, at a ref: `…/tree/<ref>[/<path>]`, `…/commit/<sha>` or `…/blob/<ref>/<path>`.
+ * A query or a fragment, `?tab=…` or `#diff-…`, is not part of it.
  */
 export function parseGitHubUrl(input: string): GitHubUrl | undefined {
-  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:(?:\.git)?|\/(tree|commit|blob)\/(\S+?))\/?$/i.exec(input.trim());
+  const match = /^(?:https?:\/\/)?(?:www\.)?github\.com\/([\w.-]+)\/([\w.-]+?)(?:(?:\.git)?|\/(tree|commit|blob)\/([^\s?#]+?))\/?(?:[?#]\S*)?$/i.exec(input.trim());
   if (!match) return undefined;
   const [, owner, repo, kind, rest] = match;
   if (!kind) return { owner, repo, refs: [] };

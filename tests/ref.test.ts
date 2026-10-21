@@ -66,6 +66,23 @@ test('a pinned link Skill Atlas printed: the repository at that commit', async (
   assert.equal(scanned.stdout.split('\n')[2], `  ${printed}`);
 });
 
+test("a query or a fragment, as GitHub's pages add them: ignored", async () => {
+  for (const [input, ref] of [
+    [`${EXAMPLE}/commit/${EXAMPLE_COMMIT}#diff-0123abcd`, EXAMPLE_COMMIT],
+    [`${EXAMPLE}/commit/${EXAMPLE_COMMIT}?diff=split`, EXAMPLE_COMMIT],
+    [`${EXAMPLE}/tree/v1.0?tab=readme-ov-file`, 'v1.0'],
+    [`${EXAMPLE}/tree/v1.0/?tab=readme-ov-file#readme`, 'v1.0'],
+    [`${link(EXAMPLE_COMMIT, '.claude/skills/commits/SKILL.md')}#L5`, EXAMPLE_COMMIT],
+  ]) {
+    const scanned = await atlas(['scan', input]);
+    assert.equal(scanned.code, 0, `${input}: ${scanned.stderr}`);
+    assert.equal(scanned.stdout, [`JetBrains/example @ ${ref} · 1 skill`, ...AT_EXAMPLE_COMMIT].join('\n'), input);
+  }
+  const plain = await atlas(['scan', `${EXAMPLE}?tab=readme-ov-file`]);
+  assert.equal(plain.code, 0, plain.stderr);
+  assert.equal(plain.stdout.split('\n')[0], 'JetBrains/example · 1 skill');
+});
+
 test('the default branch by name: the same as the repository URL', async () => {
   const byName = await atlas(['scan', `${EXAMPLE}/tree/main`]);
   assert.equal(byName.code, 0, byName.stderr);
